@@ -1,0 +1,12 @@
+/gumbel_estimation/Cargo.lock
+/data
+/results/*
+
+/**/-
+/**/=
+/**/\\
+
+/**/target
+/**/*.png
+/**/*.svg
+/**/perf.data*

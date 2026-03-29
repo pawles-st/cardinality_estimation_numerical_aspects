@@ -1,0 +1,9 @@
+[package]
+name = "gumbel_estimation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ahash = "0.8.11"
+bitvec = "1.0.1"
+rand = "0.8.5"

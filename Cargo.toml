@@ -1,0 +1,15 @@
+[package]
+name = "streaming_algorithms_comparison"
+version = "1.0.0"
+
+[[bin]]
+name = "comparison"
+path = "comparison/src/main.rs"
+
+[workspace]
+members = [
+	"gumbel_estimation",
+	"comparison",
+	"gen_data",
+]
+resolver = "2"
