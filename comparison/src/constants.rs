@@ -18,7 +18,7 @@ const fn array_from_range<const K: usize>(begin: usize, step: usize) -> [usize; 
 }
 
 // cardinalities of the underlying multisets
-pub const CARDINALITIES: [usize; 80] = array_from_range(10_000, 10_000); // large datasets
+pub const CARDINALITIES: [usize; 50] = array_from_range(10_000, 10_000); // large datasets
 //pub const CARDINALITIES: [usize; 2000] = array_from_range(1, 1); // small datasets
 
 // dataset size multiplies; the size of the dataset

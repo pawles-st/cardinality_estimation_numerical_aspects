@@ -1,5 +1,5 @@
 use ahash::random_state::RandomState;
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal};
+use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, GumbelTransform};
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
 use std::fs::File;
 use std::io;
@@ -9,84 +9,85 @@ pub mod constants;
 
 use constants::ITERATIONS;
 
-pub fn create_output(alg: &str, prec: u8, card: usize, size: usize) -> Result<File, io::Error> {
+pub fn prepare_outfile(alg: &str, prec: u8, card: usize, size: usize) -> Result<File, io::Error> {
     let outpath = format!("../results/{}_{}_{}_{}.txt", alg, prec, card, size);
     let out = File::create(outpath)?;
 
     Ok(out)
 }
 
-pub fn create_input(card: usize, size: usize) -> Result<BufReader<File>, io::Error> {
-    let inpath = format!("../data/data_{}_{}.txt", card, size);
-    let input = File::open(&inpath).map_err(|err| {
-        io::Error::new(err.kind(), format!("failed to open file {}", inpath))
-    })?;
-    let reader = BufReader::new(input);
+pub fn load_data(card: usize, size: usize) -> Result<Vec<u64>, io::Error> {
+    let file = File::open(format!("../data/data_{}_{}.txt", card, size))?;
+    let reader = BufReader::new(file);
 
-    Ok(reader)
+    reader.lines().map(|l| {
+        l.and_then(|l| l.trim().parse::<u64>()
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
+        )
+    }).collect()
 }
 
-pub fn gather(prec: u8, card: usize, size: usize) -> Result<(), io::Error> {
-    // prepare the input data
-    let reader = create_input(card, size)?;
-
-    // prepare the output
-    let mut hll_out = create_output("HLL", prec, card, size)?;
-    let mut ghll_geo_out = create_output("GHLLGeo", prec, card, size)?;
-    let mut ghll_har_out = create_output("GHLLHar", prec, card, size)?;
-    let mut ghllr_geo_out = create_output("GHLLRealGeo", prec, card, size)?;
-    let mut ghllr_har_out = create_output("GHLLRealHar", prec, card, size)?;
-    let mut ghllp_out = create_output("GHLLPlus", prec, card, size)?;
+pub fn gather<G: GumbelTransform + Copy>(
+    prec: u8,
+    card: usize,
+    size: usize,
+    data: &[u64],
+    transform: G,
+    transform_name: &str,
+    include_hll: bool,
+) -> Result<(), io::Error> {
+    // Crepare the output files
+    let mut ghll_geo_out = prepare_outfile(&format!("GHLLGeo_{}", transform_name), prec, card, size)?;
+    let mut ghll_har_out = prepare_outfile(&format!("GHLLHar_{}", transform_name), prec, card, size)?;
+    let mut ghllr_geo_out = prepare_outfile(&format!("GHLLRealGeo_{}", transform_name), prec, card, size)?;
+    let mut ghllr_har_out = prepare_outfile(&format!("GHLLRealHar_{}", transform_name), prec, card, size)?;
+    let mut ghllp_out = prepare_outfile(&format!("GHLLPlus_{}", transform_name), prec, card, size)?;
     
-    // create `ITERATIONS` independent estimators with a common random state
+    // Create independent hash builders for each iteration
     let builders: Vec<_> = (0..ITERATIONS).map(|_| RandomState::new()).collect();
-    let mut hll_estimators: Vec<_> = (0..ITERATIONS).map(|i| HyperLogLogPF::<u64, _>::new(prec, builders[i].clone()).unwrap()).collect();
-    let mut ghll_estimators: Vec<_> = (0..ITERATIONS).map(|i| GHLL::<_>::with_precision(prec, builders[i].clone()).unwrap()).collect();
-    let mut ghllr_estimators: Vec<_> = (0..ITERATIONS).map(|i| GHLLReal::<_>::with_precision(prec, builders[i].clone()).unwrap()).collect();
-    let mut ghllp_estimators: Vec<_> = (0..ITERATIONS).map(|i| GHLLPlus::<_>::with_precision(prec, builders[i].clone()).unwrap()).collect();
 
-    // analyse the data
-    for line in reader.lines() {
-        // read the next value
-        let value = line.and_then(|l| l.trim().parse::<u64>()
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-        )?;
+    // HLL
+    if include_hll {
+        let mut hll_out = prepare_outfile("HLL", prec, card, size)?;
+        for i in 0..ITERATIONS {
+            let mut estimator = HyperLogLogPF::<u64, _>::new(prec, builders[i].clone()).unwrap();
+            for &value in data {
+                estimator.insert(&value)
+            }
+            writeln!(hll_out, "{}", estimator.count())?;
+        }
+    }
 
-        // feed the value to each estimator
-        for estimator in &mut hll_estimators {
-            estimator.insert(&value);
-        };
-        for estimator in &mut ghll_estimators {
-            estimator.add(&value);
-        };
-        for estimator in &mut ghllr_estimators {
-            estimator.add(&value);
-        };
-        for estimator in &mut ghllp_estimators {
-            estimator.add(&value);
-        };
-    };
+    // GHLL
 
-    // acquire the cardinality estimate for each estimator and write the result
-    for estimator in &mut hll_estimators {
-        let estimate = estimator.count();
-        writeln!(hll_out, "{}", estimate)?;
+    for i in 0..ITERATIONS {
+        let mut estimator = GHLL::<_, _>::with_precision(prec, builders[i].clone(), transform).unwrap();
+        for &value in data {
+            estimator.add(&value)
+        }
+        writeln!(ghll_geo_out, "{}", estimator.count_geo())?;
+        writeln!(ghll_har_out, "{}", estimator.count_har())?;
     }
-    for estimator in &mut ghll_estimators {
-        let estimate = estimator.count_geo();
-        writeln!(ghll_geo_out, "{}", estimate)?;
-        let estimate = estimator.count_har();
-        writeln!(ghll_har_out, "{}", estimate)?;
+    
+    // GHLLReal
+
+    for i in 0..ITERATIONS {
+        let mut estimator = GHLLReal::<_, _>::with_precision(prec, builders[i].clone(), transform).unwrap();
+        for &value in data {
+            estimator.add(&value)
+        }
+        writeln!(ghllr_geo_out, "{}", estimator.count_geo())?;
+        writeln!(ghllr_har_out, "{}", estimator.count_har())?;
     }
-    for estimator in &mut ghllr_estimators {
-        let estimate = estimator.count_geo();
-        writeln!(ghllr_geo_out, "{}", estimate)?;
-        let estimate = estimator.count_har();
-        writeln!(ghllr_har_out, "{}", estimate)?;
-    }
-    for estimator in &mut ghllp_estimators {
-        let estimate = estimator.count();
-        writeln!(ghllp_out, "{}", estimate)?;
+    
+    // GHLLPlus
+
+    for i in 0..ITERATIONS {
+        let mut estimator = GHLLPlus::<_, _>::with_precision(prec, builders[i].clone(), transform).unwrap();
+        for &value in data {
+            estimator.add(&value)
+        }
+        writeln!(ghllp_out, "{}", estimator.count())?;
     }
 
     Ok(())

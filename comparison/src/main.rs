@@ -1,64 +1,54 @@
 use itertools::iproduct;
+use rayon::prelude::*;
 use std::io::{stdout, Write};
-use std::thread;
 use std::sync::{Arc, Mutex};
+use gumbel_estimation::{ICDFGumbel, BitHackGumbel};
 
-use comparison::gather;
+use comparison::{gather, load_data};
 use comparison::constants::{CARDINALITIES, DATA_SIZE_MULTIPLIES, PRECISIONS};
 
 fn main() {
     println!("Gathering results...");
 
-    // take dataset specifications based on all combinations of
-    // (cardinality, data_size) using the constants from constants.rs;
-    // datasets of size larger than a billion are ignored
-    let data_sizes: Vec<_> = iproduct!(CARDINALITIES, DATA_SIZE_MULTIPLIES).filter(|(card, mult)| card * mult <= 1_000_000_000).collect();
-    let no_datasets = data_sizes.len();
+    // Filter all specified data sizes where total number of elements is at most 1 billion
+    let data_sizes: Vec<_> = iproduct!(CARDINALITIES, DATA_SIZE_MULTIPLIES)
+        .filter(|(card, mult)| card * mult <= 1_000_000_000)
+        .collect();
 
-    // prepare the handles
-    let mut handles = Vec::new();
+    // Prepare task progress counter info
+    let total_tasks = data_sizes.len();
+    let completed_tasks = Arc::new(Mutex::new(0));
 
-    // create the counter for experiments done or in progress
-    let in_progress_all = Arc::new(Mutex::new(0));
+    for (card, mult) in data_sizes {
+        // Load a dataset
+        let size = card * mult;
+        let data = load_data(card, size).unwrap_or_else(|e| panic!("Failed loading data: {}", e));
 
-    // calculate the number of threads
-    let no_threads = PRECISIONS.len();
+        PRECISIONS.par_iter().for_each(|&prec| {
+            // Run ICDF (with HLL)
+            gather(
+                prec, card, size,
+                &data,
+                ICDFGumbel::default(), "ICDF",
+                true,
+            ).unwrap_or_else(|e| panic!("Failed evaluating ICDF (prec {}): {}", prec, e));
+            
+            // Run BitHack (without HLL)
+            gather(
+                prec, card, size,
+                &data,
+                BitHackGumbel::default(), "BitHack",
+                false,
+            ).unwrap_or_else(|e| panic!("Failed evaluating BitHack (prec {}): {}", prec, e));
 
-    // gather the results; split the gatherer into threads based on precision
-    for prec in PRECISIONS {
-        // total number of experiments
-        let total_experiments = no_datasets * no_threads;
-
-        // clone the data iterators
-        let data_sizes = data_sizes.clone();
-
-        // get a shared reference to the counter of completed experiments
-        let in_progress = Arc::clone(&in_progress_all);
-
-        // create the thread
-        let handle = thread::Builder::new()
-            .name(format!("Thread prec={}", prec))
-            .spawn(move || {
-            for (card, mult) in data_sizes {
-                // update the datasets-in-progress counter
-                {
-                    let mut count = in_progress.lock().unwrap();
-                    *count += 1;
-                    print!("\rin progress: {}/{}; ", count, total_experiments);
-                    stdout().flush().unwrap();
-                }
-
-                // gather results
-                gather(prec, card, card * mult).unwrap_or_else(|e| panic!("Failed gathering data: {}\n", e));
-            }
-        }).unwrap();
-
-        handles.push(handle);
+        });
+        
+        // Update progress
+        let mut count = completed_tasks.lock().unwrap();
+        *count += 1;
+        print!("\rCompleted: {}/{}", count, total_tasks);
+        let _ = stdout().flush();
     }
 
-    for handle in handles {
-        let _ = handle.join();
-    }
-
-    println!();
+    println!("\nDone!");
 }

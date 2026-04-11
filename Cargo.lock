@@ -141,6 +141,7 @@ dependencies = [
  "hyperloglogplus",
  "itertools 0.13.0",
  "rand",
+ "rayon",
 ]
 
 [[package]]
