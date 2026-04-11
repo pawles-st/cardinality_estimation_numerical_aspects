@@ -8,7 +8,7 @@ use std::hash::Hash;
 use std::io;
 use std::io::{BufRead, BufReader};
 
-use comparison::load_data
+use comparison::load_data;
 
 pub fn bench_hll<T, M>(g: &mut BenchmarkGroup<M>, prec: u8, card: usize, data: &[T])
 where
