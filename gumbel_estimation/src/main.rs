@@ -1,4 +1,4 @@
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal};
+use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, ICDFGumbel, BitHackGumbel};
 use std::collections::hash_map::RandomState;
 use std::error::Error;
 use std::fs::File;
@@ -21,10 +21,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     const NO_REGISTERS: u8 = 8;
 
     let builder = RandomState::new();
+    let transform = BitHackGumbel::default();
     let data = load_data(100_000, 10_000_000)?;
 
     {
-        let mut ghll = GHLL::<_>::with_precision(NO_REGISTERS, builder.clone()).unwrap();
+        let mut ghll = GHLL::<_, _>::with_precision(NO_REGISTERS, builder.clone(), transform).unwrap();
         for d in data.iter() {
             ghll.add(&d);
         }
@@ -33,7 +34,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
     
     {
-        let mut ghllr = GHLLReal::<_>::with_precision(NO_REGISTERS, builder.clone()).unwrap();
+        let mut ghllr = GHLLReal::<_, _>::with_precision(NO_REGISTERS, builder.clone(), transform).unwrap();
         for d in data.iter() {
             ghllr.add(&d);
         }
@@ -42,7 +43,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     }
 
     {
-        let mut ghllp = GHLLPlus::<_>::with_precision(NO_REGISTERS, builder.clone()).unwrap();
+        let mut ghllp = GHLLPlus::<_, _>::with_precision(NO_REGISTERS, builder.clone(), transform).unwrap();
         for d in data.iter() {
             ghllp.add(&d);
         }
