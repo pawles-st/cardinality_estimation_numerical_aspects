@@ -1,53 +1,126 @@
 use ahash::random_state::RandomState;
 use criterion::*;
 use criterion::measurement::Measurement;
-use gumbel_estimation::{GHLL, GHLLPlus};
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
-use std::fs::File;
 use std::hash::Hash;
-use std::io;
-use std::io::{BufRead, BufReader};
 
-use comparison::load_data;
+use gumbel_estimation::{GHLL, GHLLReal, GHLLPlus, GumbelTransform, ICDFGumbel, BitHackGumbel};
 
-pub fn bench_hll<T, M>(g: &mut BenchmarkGroup<M>, prec: u8, card: usize, data: &[T])
+pub use comparison::load_data;
+
+pub fn bench_hll<T, M>(
+    g: &mut BenchmarkGroup<M>,
+    prec: u8,
+    card: usize,
+    data: &[T],
+)
 where
     T: Hash,
     M: Measurement,
 {
-    g.bench_with_input(BenchmarkId::new("HyperLogLog", format!("{}/{}/{}", prec, card, data.len())), data, |b, data| b.iter(|| {
-        let mut estimator = HyperLogLogPF::<T, _>::new(prec, RandomState::new()).unwrap();
-        for d in data {
-            estimator.insert(d);
-        }
-        let _estimate = estimator.count();
-    }));
+    g.bench_with_input(BenchmarkId::new("HyperLogLog", format!("{}/{}/{}", prec, card, data.len())), data, |b, data| {
+        b.iter_batched(
+            || HyperLogLogPF::<T, _>::new(prec, RandomState::new()).unwrap(),
+            |mut estimator| {
+                for d in data {
+                    estimator.insert(d);
+                }
+                let _estimate = estimator.count();
+            },
+            BatchSize::SmallInput
+        )
+    });
 }
 
-pub fn bench_ghll<T, M>(g: &mut BenchmarkGroup<M>, prec: u8, card: usize, data: &[T])
+pub fn bench_ghll<T, M, G>(
+    g: &mut BenchmarkGroup<M>,
+    prec: u8,
+    card: usize,
+    data: &[T],
+    transform: G,
+    label: &str,
+)
 where
     T: Hash,
     M: Measurement,
+    G: GumbelTransform + Copy,
 {
-    g.bench_with_input(BenchmarkId::new("GumbelHyperLogLog", format!("{}/{}/{}", prec, card, data.len())), data, |b, data| b.iter(|| {
-        let mut estimator = GHLL::<_>::with_precision(prec, RandomState::new()).unwrap();
-        for d in data {
-            estimator.add(d);
+    g.bench_with_input(
+        BenchmarkId::new(label, format!("{}/{}/{}", prec, card, data.len())),
+        data,
+        |b, data| {
+            b.iter_batched(
+                || GHLL::<_, G>::with_precision(prec, RandomState::new(), transform).unwrap(),
+                |mut estimator| {
+                    for d in data {
+                        estimator.add(d);
+                    }
+                    let _estimate = estimator.count_geo();
+                },
+                BatchSize::SmallInput
+            )
         }
-        let _estimate = estimator.count_geo();
-    }));
+    );
 }
 
-pub fn bench_ghllplus<T, M>(g: &mut BenchmarkGroup<M>, prec: u8, card: usize, data: &[T])
+pub fn bench_ghllreal<T, M, G>(
+    g: &mut BenchmarkGroup<M>,
+    prec: u8,
+    card: usize,
+    data: &[T],
+    transform: G,
+    label: &str,
+)
 where
     T: Hash,
     M: Measurement,
+    G: GumbelTransform + Copy,
 {
-    g.bench_with_input(BenchmarkId::new("GumbelHyperLogLog+", format!("{}/{}/{}", prec, card, data.len())), data, |b, data| b.iter(|| {
-        let mut estimator = GHLLPlus::<_>::with_precision(prec, RandomState::new()).unwrap();
-        for d in data {
-            estimator.add(d);
+    g.bench_with_input(
+        BenchmarkId::new(label, format!("{}/{}/{}", prec, card, data.len())),
+        data,
+        |b, data| {
+            b.iter_batched(
+                || GHLLReal::<_, G>::with_precision(prec, RandomState::new(), transform).unwrap(),
+                |mut estimator| {
+                    for d in data {
+                        estimator.add(d);
+                    }
+                    let _estimate = estimator.count_geo();
+                },
+                BatchSize::SmallInput
+            )
         }
-        let _estimate = estimator.count();
-    }));
+    );
+}
+
+pub fn bench_ghllplus<T, M, G>(
+    g: &mut BenchmarkGroup<M>,
+    prec: u8,
+    card: usize,
+    data: &[T],
+    transform: G,
+    label: &str,
+)
+where
+    T: Hash,
+    M: Measurement,
+    G: GumbelTransform + Copy,
+{
+    g.bench_with_input(
+        BenchmarkId::new(label, format!("{}/{}/{}", prec, card, data.len())),
+        data,
+        |b, data| {
+            b.iter_batched(
+                || GHLLPlus::<_, G>::with_precision(prec, RandomState::new(), transform).unwrap(),
+                |mut estimator| {
+                    for d in data {
+                        estimator.add(d);
+                    }
+                    let _estimate = estimator.count();
+                },
+                BatchSize::SmallInput
+            )
+        }
+    );
 }
