@@ -3,10 +3,10 @@ use std::hash::{Hash, BuildHasher};
 /// Negative value of Euler gamma constant
 pub const NEG_GAMMA: f64 = -0.577_215_664_901_532_9_f64;
 
-/// The minimal accepted precision
+/// Minimal accepted precision
 pub const MIN_PRECISION: u8 = 4;
 
-/// The maximal accepted precision
+/// Maximal accepted precision
 pub const MAX_PRECISION: u8 = 16;
 
 #[derive(Debug)]
@@ -14,6 +14,7 @@ pub enum GumbelError {
     InvalidPrecision,
 }
 
+/// Hashes a value and splits it into a substream index and hash proper
 #[inline]
 pub fn hash_value<H, B>(value: &H, builder: &B, precision: u8) -> (usize, u32) 
 where
@@ -32,7 +33,7 @@ where
     (index, hash)
 }
 
-// Create a [0, 1) float from its binary represenation
+/// Creates a [0, 1) float from its binary representation
 #[inline]
 pub fn mantissa_to_float(bits: u32) -> f32 {
     // Bits 30-23 hold the biased exponent; the value of 127
@@ -50,7 +51,7 @@ pub fn mantissa_to_float(bits: u32) -> f32 {
     f32::from_bits(bits) - 1.0
 }
 
-/// Obtains a shift rounding value for a give register index
+/// Obtains a shift rounding value for a given register index
 #[inline]
 pub fn get_shift<B: BuildHasher>(builder: &B, index: usize) -> f32 {
     let hash = builder.hash_one(&index) as u32;
