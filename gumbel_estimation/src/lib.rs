@@ -3,6 +3,8 @@ use std::hash::{BuildHasher, Hash};
 mod common;
 mod registers;
 
+pub use registers::Registers;
+pub use common::{get_shift, mantissa_to_float, GumbelError, MIN_PRECISION, MAX_PRECISION, NEG_GAMMA};
 pub mod gumbel;
 pub mod ghll;
 pub mod ghll_real;

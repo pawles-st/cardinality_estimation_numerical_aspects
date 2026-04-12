@@ -18,3 +18,11 @@ rayon = "1.8"
 [[bench]]
 name = "benchmark"
 harness = false
+
+[[bench]]
+name = "profile_ghll"
+harness = false
+
+[[bench]]
+name = "hll_vs_ghll_steps"
+harness = false
