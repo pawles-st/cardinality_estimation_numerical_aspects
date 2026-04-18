@@ -1,7 +1,7 @@
 use criterion::*;
 use itertools::iproduct;
 
-use gumbel_estimation::{ICDFGumbel, BitHackGumbel};
+use gumbel_estimation::{ICDFGumbel, BitHackGumbel, PadeGumbel, OptimalGumbel, FastGumbel};
 
 use comparison::constants::{CARDINALITIES, DATA_SIZE_MULTIPLIES, PRECISIONS};
 
@@ -33,16 +33,25 @@ fn benchmark(c: &mut Criterion) {
 
             bench_ghll(&mut group, prec, card, &data, ICDFGumbel::default(), "GHLL (ICDF)");
             bench_ghll(&mut group, prec, card, &data, BitHackGumbel::default(), "GHLL (BitHack)");
+            bench_ghll(&mut group, prec, card, &data, PadeGumbel::default(), "GHLL (Pade)");
+            bench_ghll(&mut group, prec, card, &data, OptimalGumbel::default(), "GHLL (Optimal)");
+            bench_ghll(&mut group, prec, card, &data, FastGumbel::default(), "GHLL (Fast)");
 
             // perform GumbelHyperLogLogReal benchmark
 
             bench_ghllreal(&mut group, prec, card, &data, ICDFGumbel::default(), "GHLLReal (ICDF)");
             bench_ghllreal(&mut group, prec, card, &data, BitHackGumbel::default(), "GHLLReal (BitHack)");
+            bench_ghllreal(&mut group, prec, card, &data, PadeGumbel::default(), "GHLLReal (Pade)");
+            bench_ghllreal(&mut group, prec, card, &data, OptimalGumbel::default(), "GHLLReal (Optimal)");
+            bench_ghllreal(&mut group, prec, card, &data, FastGumbel::default(), "GHLLReal (Fast)");
 
             // perform GumbelHyperLogLog+ benchmark
 
             bench_ghllplus(&mut group, prec, card, &data, ICDFGumbel::default(), "GHLL+ (ICDF)");
             bench_ghllplus(&mut group, prec, card, &data, BitHackGumbel::default(), "GHLL+ (BitHack)");
+            bench_ghllplus(&mut group, prec, card, &data, PadeGumbel::default(), "GHLL+ (Pade)");
+            bench_ghllplus(&mut group, prec, card, &data, OptimalGumbel::default(), "GHLL+ (Optimal)");
+            bench_ghllplus(&mut group, prec, card, &data, FastGumbel::default(), "GHLL+ (Fast)");
         }
 
         group.finish();

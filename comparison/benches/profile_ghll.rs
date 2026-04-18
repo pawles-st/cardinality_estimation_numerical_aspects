@@ -1,7 +1,7 @@
 use ahash::random_state::RandomState;
 use criterion::*;
 
-use gumbel_estimation::{GHLL, ICDFGumbel, BitHackGumbel};
+use gumbel_estimation::{GHLL, ICDFGumbel, BitHackGumbel, OptimalGumbel};
 
 use comparison::load_data;
 
@@ -12,7 +12,7 @@ fn profile_ghll(c: &mut Criterion) {
 
     let data = load_data(card, size).unwrap_or_else(|_| vec![0u64; size]);
     let builder = RandomState::new();
-    let transform = BitHackGumbel::new();
+    let transform = OptimalGumbel::new();
 
     let mut group = c.benchmark_group("Profile");
 

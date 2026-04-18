@@ -1,4 +1,4 @@
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, ICDFGumbel, BitHackGumbel};
+use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, ICDFGumbel, BitHackGumbel, OptimalGumbel};
 use std::collections::hash_map::RandomState;
 use std::error::Error;
 use std::fs::File;
@@ -21,7 +21,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     const NO_REGISTERS: u8 = 8;
 
     let builder = RandomState::new();
-    let transform = BitHackGumbel::default();
+    let transform = OptimalGumbel::default();
     let data = load_data(100_000, 10_000_000)?;
 
     {

@@ -5,7 +5,7 @@ card <- 50000
 mult <- 100
 precisions <- c(8)
 iters <- 100
-transforms <- c("ICDF", "BitHack")
+transforms <- c("ICDF", "BitHack", "Pade", "Optimal", "Fast")
 
 # algorithms to analyze per transform
 algorithms <- c("GHLLGeo", "GHLLHar", "GHLLRealGeo", "GHLLRealHar", "GHLLPlus")

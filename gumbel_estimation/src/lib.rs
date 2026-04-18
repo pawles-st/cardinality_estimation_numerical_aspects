@@ -10,10 +10,9 @@ pub mod ghll;
 pub mod ghll_real;
 pub mod ghll_plus;
 
+pub use gumbel::{GumbelTransform, ICDFGumbel, BitHackGumbel, PadeGumbel, OptimalGumbel, FastGumbel};
 pub use ghll::GHLL;
 pub use ghll_real::GHLLReal;
-
-pub use gumbel::{GumbelTransform, ICDFGumbel, BitHackGumbel};
 pub use ghll_plus::GHLLPlus;
 
 pub trait GumbelEstimator<T: ?Sized> {

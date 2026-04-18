@@ -1,6 +1,6 @@
 // this file can be edited to change the dataset sizes used for benchmarks and comparisons
 
-use gumbel_estimation::{GumbelTransform, ICDFGumbel, BitHackGumbel};
+use gumbel_estimation::{GumbelTransform, ICDFGumbel, BitHackGumbel, PadeGumbel, OptimalGumbel, FastGumbel};
 
 // create a const array from a start value and step
 const fn array_from_range<const K: usize>(begin: usize, step: usize) -> [usize; K] {
@@ -23,6 +23,9 @@ const fn array_from_range<const K: usize>(begin: usize, step: usize) -> [usize; 
 pub enum Transform {
     ICDF,
     BitHack,
+    Pade,
+    Optimal,
+    Fast,
 }
 
 impl GumbelTransform for Transform {
@@ -30,6 +33,9 @@ impl GumbelTransform for Transform {
         match self {
             Transform::ICDF => ICDFGumbel.quantile(q),
             Transform::BitHack => BitHackGumbel.quantile(q),
+            Transform::Pade => PadeGumbel.quantile(q),
+            Transform::Optimal => OptimalGumbel.quantile(q),
+            Transform::Fast => FastGumbel.quantile(q),
         }
     }
 }
@@ -37,6 +43,9 @@ impl GumbelTransform for Transform {
 pub const TRANSFORMS: &[(Transform, &str, bool)] = &[
     (Transform::ICDF, "ICDF", true),
     (Transform::BitHack, "BitHack", false),
+    (Transform::Pade, "Pade", false),
+    (Transform::Optimal, "Optimal", false),
+    (Transform::Fast, "Fast", false),
 ];
 
 // cardinalities of the underlying multisets

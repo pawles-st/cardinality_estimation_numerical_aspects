@@ -10,6 +10,8 @@ fn bench_hll_vs_ghll_steps(c: &mut Criterion) {
     let data: Vec<u64> = (0..size as u64).collect();
     let builder = RandomState::new();
     let bit_hack = BitHackGumbel::new();
+    let optimal = OptimalGumbel::new();
+    let fast = FastGumbel::new();
 
     let mut group = c.benchmark_group("HLL_vs_GHLL_Steps");
 
@@ -86,6 +88,34 @@ fn bench_hll_vs_ghll_steps(c: &mut Criterion) {
         })
     });
 
+    // 5b. GHLL + Optimal Gumbel (The Gumbel math cost)
+    group.bench_function("5b_GHLL_Optimal_Math", |b| {
+        let mut registers = Registers::new(1 << prec);
+        b.iter(|| {
+            for d in &data {
+                let h = builder.hash_one(d) as u32;
+                let idx = (h >> (32 - prec)) as usize;
+                let g = optimal.from_bits(h);
+                let val = Registers::encode(g, 0.5);
+                registers.set_greater(idx, val);
+            }
+        })
+    });
+
+    // 5c. GHLL + Fast Gumbel (The Gumbel math cost)
+    group.bench_function("5c_GHLL_Fast_Math", |b| {
+        let mut registers = Registers::new(1 << prec);
+        b.iter(|| {
+            for d in &data {
+                let h = builder.hash_one(d) as u32;
+                let idx = (h >> (32 - prec)) as usize;
+                let g = fast.from_bits(h);
+                let val = Registers::encode(g, 0.5);
+                registers.set_greater(idx, val);
+            }
+        })
+    });
+
     // 6. Full GHLL (BitHack + Double Hash)
     group.bench_function("6_GHLL_Full", |b| {
         let mut registers = Registers::new(1 << prec);
@@ -94,6 +124,36 @@ fn bench_hll_vs_ghll_steps(c: &mut Criterion) {
                 let h = builder.hash_one(d) as u32;
                 let idx = (h >> (32 - prec)) as usize;
                 let g = bit_hack.from_bits(h);
+                let shift = get_shift(&builder, idx);
+                let val = Registers::encode(g, shift);
+                registers.set_greater(idx, val);
+            }
+        })
+    });
+
+    // 6b. Full GHLL (Optimal + Double Hash)
+    group.bench_function("6b_GHLL_Full_Optimal", |b| {
+        let mut registers = Registers::new(1 << prec);
+        b.iter(|| {
+            for d in &data {
+                let h = builder.hash_one(d) as u32;
+                let idx = (h >> (32 - prec)) as usize;
+                let g = optimal.from_bits(h);
+                let shift = get_shift(&builder, idx);
+                let val = Registers::encode(g, shift);
+                registers.set_greater(idx, val);
+            }
+        })
+    });
+
+    // 6c. Full GHLL (Fast + Double Hash)
+    group.bench_function("6c_GHLL_Full_Fast", |b| {
+        let mut registers = Registers::new(1 << prec);
+        b.iter(|| {
+            for d in &data {
+                let h = builder.hash_one(d) as u32;
+                let idx = (h >> (32 - prec)) as usize;
+                let g = fast.from_bits(h);
                 let shift = get_shift(&builder, idx);
                 let val = Registers::encode(g, shift);
                 registers.set_greater(idx, val);
