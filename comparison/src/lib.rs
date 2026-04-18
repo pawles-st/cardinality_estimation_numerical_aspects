@@ -1,19 +1,49 @@
 use ahash::random_state::RandomState;
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, GumbelTransform};
+use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, GumbelTransform, ICDFGumbel, BitHackGumbel};
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
+use rayon::prelude::*;
 use std::fs::File;
 use std::io;
-use std::io::{BufRead, BufReader, Write};
+use std::io::{BufRead, BufReader, BufWriter, Write};
 
-pub mod constants;
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq, Copy, Eq, Hash)]
+pub enum Algorithm {
+    Hll,
+    Ghll,
+    GhllReal,
+    GhllPlus,
+}
 
-use constants::ITERATIONS;
+#[derive(clap::ValueEnum, Clone, Debug, PartialEq, Copy, Eq, Hash)]
+pub enum Transform {
+    Icdf,
+    Bithack,
+}
 
-pub fn prepare_outfile(alg: &str, prec: u8, card: usize, size: usize) -> Result<File, io::Error> {
-    let outpath = format!("../results/{}_{}_{}_{}.txt", alg, prec, card, size);
-    let out = File::create(outpath)?;
+pub fn get_transform_name(t: Transform) -> &'static str {
+    match t {
+        Transform::Icdf => "ICDF",
+        Transform::Bithack => "BitHack",
+    }
+}
 
-    Ok(out)
+pub fn save_to_file<T: std::fmt::Display>(
+    alg_name: &str,
+    prec: u8,
+    card: usize,
+    size: usize,
+    results: Vec<T>,
+) -> std::io::Result<()> {
+    let outpath = format!("../results/{}_{}_{}_{}.txt", alg_name, prec, card, size);
+    let file = File::create(outpath)?;
+    let mut writer = BufWriter::new(file);
+
+    for res in results {
+        writeln!(writer, "{}", res)?;
+    }
+
+    writer.flush()?;
+    Ok(())
 }
 
 pub fn load_data(card: usize, size: usize) -> Result<Vec<u64>, io::Error> {
@@ -27,69 +57,57 @@ pub fn load_data(card: usize, size: usize) -> Result<Vec<u64>, io::Error> {
     }).collect()
 }
 
-pub fn gather<G: GumbelTransform + Copy>(
+// Run experiments for HLL
+pub fn gather_hll(
     prec: u8,
-    card: usize,
-    size: usize,
     data: &[u64],
-    transform: G,
-    transform_name: &str,
-    include_hll: bool,
-) -> Result<(), io::Error> {
-    // Crepare the output files
-    let mut ghll_geo_out = prepare_outfile(&format!("GHLLGeo_{}", transform_name), prec, card, size)?;
-    let mut ghll_har_out = prepare_outfile(&format!("GHLLHar_{}", transform_name), prec, card, size)?;
-    let mut ghllr_geo_out = prepare_outfile(&format!("GHLLRealGeo_{}", transform_name), prec, card, size)?;
-    let mut ghllr_har_out = prepare_outfile(&format!("GHLLRealHar_{}", transform_name), prec, card, size)?;
-    let mut ghllp_out = prepare_outfile(&format!("GHLLPlus_{}", transform_name), prec, card, size)?;
-    
-    // Create independent hash builders for each iteration
-    let builders: Vec<_> = (0..ITERATIONS).map(|_| RandomState::new()).collect();
-
-    // HLL
-    if include_hll {
-        let mut hll_out = prepare_outfile("HLL", prec, card, size)?;
-        for i in 0..ITERATIONS {
-            let mut estimator = HyperLogLogPF::<u64, _>::new(prec, builders[i].clone()).unwrap();
-            for &value in data {
-                estimator.insert(&value)
-            }
-            writeln!(hll_out, "{}", estimator.count())?;
-        }
-    }
-
-    // GHLL
-
-    for i in 0..ITERATIONS {
-        let mut estimator = GHLL::<_, _>::with_precision(prec, builders[i].clone(), transform).unwrap();
-        for &value in data {
-            estimator.add(&value)
-        }
-        writeln!(ghll_geo_out, "{}", estimator.count_geo())?;
-        writeln!(ghll_har_out, "{}", estimator.count_har())?;
-    }
-    
-    // GHLLReal
-
-    for i in 0..ITERATIONS {
-        let mut estimator = GHLLReal::<_, _>::with_precision(prec, builders[i].clone(), transform).unwrap();
-        for &value in data {
-            estimator.add(&value)
-        }
-        writeln!(ghllr_geo_out, "{}", estimator.count_geo())?;
-        writeln!(ghllr_har_out, "{}", estimator.count_har())?;
-    }
-    
-    // GHLLPlus
-
-    for i in 0..ITERATIONS {
-        let mut estimator = GHLLPlus::<_, _>::with_precision(prec, builders[i].clone(), transform).unwrap();
-        for &value in data {
-            estimator.add(&value)
-        }
-        writeln!(ghllp_out, "{}", estimator.count())?;
-    }
-
-    Ok(())
+    builders: &[RandomState],
+) -> Vec<f64> {
+    builders.into_par_iter().map(|builder| {
+        let mut estimator = HyperLogLogPF::<u64, _>::new(prec, builder.clone()).unwrap();
+        for &value in data { estimator.insert(&value) }
+        estimator.count()
+    }).collect()
 }
 
+// Run experiments for GHLL (Geo + Har)
+pub fn gather_ghll<G: GumbelTransform + Copy + Send + Sync>(
+    prec: u8,
+    data: &[u64],
+    builders: &[RandomState],
+    transform: G,
+) -> (Vec<f64>, Vec<f64>) {
+    builders.into_par_iter().map(|builder| {
+        let mut estimator = GHLL::with_precision(prec, builder.clone(), transform).unwrap();
+        for &value in data { estimator.add(&value) }
+        (estimator.count_geo(), estimator.count_har())
+    }).unzip()
+}
+
+// Run experiments for GHLLReal (Geo + Har)
+pub fn gather_ghllreal<G: GumbelTransform + Copy + Send + Sync>(
+    prec: u8,
+    data: &[u64],
+    builders: &[RandomState],
+    transform: G,
+) -> (Vec<f64>, Vec<f64>) {
+    builders.into_par_iter().map(|builder| {
+        let mut estimator = GHLLReal::with_precision(prec, builder.clone(), transform).unwrap();
+        for &value in data { estimator.add(&value) }
+        (estimator.count_geo(), estimator.count_har())
+    }).unzip()
+}
+
+// Run experiments for GHLLPlus
+pub fn gather_ghllplus<G: GumbelTransform + Copy + Send + Sync>(
+    prec: u8,
+    data: &[u64],
+    builders: &[RandomState],
+    transform: G,
+) -> Vec<f64> {
+    builders.into_par_iter().map(|builder| {
+        let mut estimator = GHLLPlus::with_precision(prec, builder.clone(), transform).unwrap();
+        for &value in data { estimator.add(&value) }
+        estimator.count()
+    }).collect()
+}
