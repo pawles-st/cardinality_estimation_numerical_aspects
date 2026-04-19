@@ -19,7 +19,6 @@ gumbel.algs <- c(
 #				"GHLLRealHar" = "GumbelHyperLogLog (Real, Har)",
 				"GHLLPlus" = "GumbelHyperLogLog+"
 )
-no.algorithms <- length(algorithms)
 
 transforms <- c("ICDF", "BitHack")
 
