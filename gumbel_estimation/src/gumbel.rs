@@ -2,7 +2,6 @@ use crate::common::mantissa_to_float;
 
 const INV_MANTISSA: f32 = 1.0 / (1 << 23) as f32;
 const LN_2: f32 = 0.69314718_f32;
-const SIGMA: f32 = 0.0430357_f32;
 
 // Generic trait for Gumbel variate creation from either a [0, 1) f32 or its binary representation
 pub trait GumbelTransform {
@@ -32,13 +31,15 @@ impl GumbelTransform for ICDFGumbel {
     }
 }
 
-// Bit-hack Gumbel generator
+// Simple bit-hack Gumbel transform
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub struct BitHackGumbel;
-impl BitHackGumbel {
+pub struct SimpleBitHackGumbel;
+impl SimpleBitHackGumbel {
     pub fn new() -> Self{
         Self{}
     }
+
+    //const SIGMA: f32 = 0.0430357_f32;
 
     // Fast linear approximation of ln(x) for x > 0
     // For x = 2^e (1 + m), the approximation is
@@ -59,10 +60,39 @@ impl BitHackGumbel {
         (e as f32 * LN_2) + m
     }
 }
-impl GumbelTransform for BitHackGumbel {
+impl GumbelTransform for SimpleBitHackGumbel {
     #[inline]
     fn quantile(&self, q: f32) -> f32 {
         let ln_q = self.bit_hack_ln(q);
         -self.bit_hack_ln(-ln_q)
+    }
+}
+
+// Taylor branching bit-hack Gumbel transform
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct TaylorBitHackGumbel;
+impl TaylorBitHackGumbel {
+    pub fn new() -> Self {
+        Self{}
+    }
+
+    const SIGMA: f32 = 0.0397207708399_f32;
+
+    #[inline]
+    fn bit_hack_ln(&self, x: f32) -> f32 {
+        let bits = x.to_bits();
+        (bits as f32 * INV_MANTISSA - 127.0) * LN_2 + Self::SIGMA
+    }
+}
+impl GumbelTransform for TaylorBitHackGumbel {
+    #[inline]
+    fn quantile(&self, q: f32) -> f32 {
+        let v = 1.0 - q;
+        let log_q = -self.bit_hack_ln(q);
+        let z = if q < 0.5 { log_q } else { v };
+        let base_y = -self.bit_hack_ln(z);
+        let taylor = v * (0.5 + 0.20833333 * v);
+        let residual = if q >= 0.5 { taylor } else { 0.0 };
+        base_y - residual
     }
 }

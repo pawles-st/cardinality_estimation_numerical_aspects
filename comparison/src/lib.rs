@@ -1,5 +1,6 @@
+pub mod constants;
 use ahash::random_state::RandomState;
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, GumbelTransform, ICDFGumbel, BitHackGumbel};
+use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, GumbelTransform};
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
 use rayon::prelude::*;
 use std::fs::File;
@@ -17,13 +18,15 @@ pub enum Algorithm {
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, Copy, Eq, Hash)]
 pub enum Transform {
     Icdf,
-    Bithack,
+    SimpleBithack,
+    TaylorBithack,
 }
 
 pub fn get_transform_name(t: Transform) -> &'static str {
     match t {
         Transform::Icdf => "ICDF",
-        Transform::Bithack => "BitHack",
+        Transform::SimpleBithack => "SimpleBitHack",
+        Transform::TaylorBithack => "TaylorBitHack",
     }
 }
 

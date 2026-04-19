@@ -11,7 +11,7 @@ pub mod ghll_plus;
 pub use ghll::GHLL;
 pub use ghll_real::GHLLReal;
 
-pub use gumbel::{GumbelTransform, ICDFGumbel, BitHackGumbel};
+pub use gumbel::{GumbelTransform, ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel};
 pub use ghll_plus::GHLLPlus;
 
 pub trait GumbelEstimator<T: ?Sized> {
