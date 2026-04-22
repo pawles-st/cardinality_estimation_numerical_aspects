@@ -3,6 +3,10 @@ use crate::common::mantissa_to_float;
 const INV_MANTISSA: f32 = 1.0 / (1 << 23) as f32;
 const LN_2: f32 = 0.69314718_f32;
 
+// Merged bit-hack constants
+const C1: f32 = 8.262958288192749e-8; // LN_2 / 2^23
+const C2: f32 = -87.9899710891601;   // SIGMA - (127.0 * LN_2)
+
 // Generic trait for Gumbel variate creation from either a [0, 1) f32 or its binary representation
 pub trait GumbelTransform {
     // Gumbel distribution inverse CDF;
@@ -76,23 +80,41 @@ impl TaylorBitHackGumbel {
         Self{}
     }
 
-    const SIGMA: f32 = 0.0397207708399_f32;
-
     #[inline]
     fn bit_hack_ln(&self, x: f32) -> f32 {
-        let bits = x.to_bits();
-        (bits as f32 * INV_MANTISSA - 127.0) * LN_2 + Self::SIGMA
+        (x.to_bits() as f32).mul_add(C1, C2)
     }
 }
 impl GumbelTransform for TaylorBitHackGumbel {
     #[inline]
     fn quantile(&self, q: f32) -> f32 {
-        let v = 1.0 - q;
-        let log_q = -self.bit_hack_ln(q);
-        let z = if q < 0.5 { log_q } else { v };
-        let base_y = -self.bit_hack_ln(z);
-        let taylor = v * (0.5 + 0.20833333 * v);
-        let residual = if q >= 0.5 { taylor } else { 0.0 };
-        base_y - residual
+        if q < 0.5 {
+            let log_q = -self.bit_hack_ln(q);
+            -self.bit_hack_ln(log_q)
+        } else {
+            let v = 1.0 - q;
+            let base_y = -self.bit_hack_ln(v);
+            let taylor = v * v.mul_add(0.20833333, 0.5);
+            base_y - taylor
+        }
+    }
+
+    #[inline(always)]
+    fn from_bits(&self, bits: u32) -> f32 {
+        let m = bits >> 9;
+        let q = m as f32 * (1.0 / 8388608.0);
+        
+        if m < (1 << 22) { // q < 0.5
+            let log_q = -self.bit_hack_ln(q);
+            -self.bit_hack_ln(log_q)
+        } else {
+            let v = 1.0 - q;
+            let base_y = -self.bit_hack_ln(v);
+            let taylor = v * v.mul_add(0.20833333, 0.5);
+            base_y - taylor
+        }
+    }
+}
+    fn quantile(&self, q: f32) -> f32 {
     }
 }
