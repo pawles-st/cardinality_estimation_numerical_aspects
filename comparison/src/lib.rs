@@ -20,6 +20,7 @@ pub enum Transform {
     Icdf,
     SimpleBithack,
     TaylorBithack,
+    TaylorInteger,
 }
 
 pub fn get_transform_name(t: Transform) -> &'static str {
@@ -27,6 +28,7 @@ pub fn get_transform_name(t: Transform) -> &'static str {
         Transform::Icdf => "ICDF",
         Transform::SimpleBithack => "SimpleBitHack",
         Transform::TaylorBithack => "TaylorBitHack",
+        Transform::TaylorInteger => "TaylorInteger",
     }
 }
 

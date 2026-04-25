@@ -1,54 +1,28 @@
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, ICDFGumbel, SimpleBitHackGumbel};
-use std::collections::hash_map::RandomState;
-use std::error::Error;
-use std::fs::File;
-use std::io;
-use std::io::{BufRead, BufReader};
+use gumbel_estimation::{GumbelTransform, TaylorIntegerGumbel, ICDFGumbel, GHLL};
+use ahash::RandomState;
+use std::time::Instant;
 
-pub fn load_data(card: usize, size: usize) -> Result<Vec<u64>, io::Error>
-{
-    let file = File::open(format!("../data/data_{}_{}.txt", card, size))?;
-    let reader = BufReader::new(file);
-
-    reader.lines().map(|l| {
-        l.and_then(|l| l.trim().parse::<u64>()
-            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
-        )
-    }).collect()
-}
-
-fn main() -> Result<(), Box<dyn Error>> {
-    const NO_REGISTERS: u8 = 8;
-
-    let builder = RandomState::new();
-    let transform = SimpleBitHackGumbel::default();
-    let data = load_data(100_000, 10_000_000)?;
-
-    {
-        let mut ghll = GHLL::<_, _>::with_precision(NO_REGISTERS, builder.clone(), transform).unwrap();
-        for d in data.iter() {
-            ghll.add(&d);
-        }
-        println!("GHLL (geo): {}", ghll.count_geo());
-        println!("GHLL (har): {}", ghll.count_har());
-    }
+fn main() {
+    let iterations: u32 = 10_000_000;
+    let s = RandomState::new();
     
-    {
-        let mut ghllr = GHLLReal::<_, _>::with_precision(NO_REGISTERS, builder.clone(), transform).unwrap();
-        for d in data.iter() {
-            ghllr.add(&d);
-        }
-        println!("GHLL Real (geo): {}", ghllr.count_geo());
-        println!("GHLL Real (har): {}", ghllr.count_har());
+    let t_int = TaylorIntegerGumbel::new();
+    let t_icdf = ICDFGumbel::new();
+    
+    let mut ghll_int = GHLL::with_precision(12, s.clone(), t_int).unwrap();
+    let mut ghll_icdf = GHLL::with_precision(12, s.clone(), t_icdf).unwrap();
+    
+    // 1. Measure GHLL + TaylorInteger (Fixed-point path)
+    let start = Instant::now();
+    for i in 0..iterations {
+        ghll_int.add(&i);
     }
+    println!("GHLL TaylorInteger (LUT Fixed): {:?}", start.elapsed());
 
-    {
-        let mut ghllp = GHLLPlus::<_, _>::with_precision(NO_REGISTERS, builder.clone(), transform).unwrap();
-        for d in data.iter() {
-            ghllp.add(&d);
-        }
-        println!("GHLL Plus: {}", ghllp.count());
+    // 2. Measure GHLL + ICDF (FPU path)
+    let start = Instant::now();
+    for i in 0..iterations {
+        ghll_icdf.add(&i);
     }
-
-    Ok(())
+    println!("GHLL ICDF (FPU):                {:?}", start.elapsed());
 }

@@ -1,7 +1,7 @@
 use ahash::random_state::RandomState;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
-use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel};
+use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, TaylorIntegerGumbel};
 use std::io;
 
 use comparison::{gather_hll, gather_ghll, gather_ghllreal, gather_ghllplus, get_transform_name, load_data, save_to_file, Algorithm, Transform};
@@ -106,6 +106,7 @@ fn main() -> io::Result<()> {
                     Transform::Icdf => { run_variants!(ICDFGumbel::default()); }
                     Transform::SimpleBithack => { run_variants!(SimpleBitHackGumbel::default()); }
                     Transform::TaylorBithack => { run_variants!(TaylorBitHackGumbel::default()); }
+                    Transform::TaylorInteger => { run_variants!(TaylorIntegerGumbel::default()); }
                 }
             }
         }

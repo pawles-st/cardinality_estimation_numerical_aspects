@@ -19,6 +19,12 @@ impl Registers {
         ((f32::floor(value + shift).clamp(Self::MIN_VAL, Self::MAX_VAL) as i32) + Self::BIAS) as u32
     }
 
+    /// Encodes a fixed point Q16.16 value with a shift into 5-bit representation
+    pub fn encode_fixed(value: i32, shift: i32) -> u32 {
+        let res = (value + shift) >> 16;
+        (res.clamp(Self::MIN_VAL as i32, Self::MAX_VAL as i32) + Self::BIAS) as u32
+    }
+
     /// Decodes a register value using a shift as a float
     pub fn decode(reg_bits: u32, shift: f32) -> f64 {
         (reg_bits as i32 - Self::BIAS) as f64 - shift as f64 + 0.5

@@ -20,7 +20,7 @@ gumbel.algs <- c(
 				"GHLLPlus" = "GumbelHyperLogLog+"
 )
 
-transforms <- c("ICDF", "SimpleBitHack", "TaylorBitHack")
+transforms <- c("ICDF", "SimpleBitHack", "TaylorBitHack", "TaylorInteger")
 
 # Plot generation
 

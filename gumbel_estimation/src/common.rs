@@ -57,3 +57,10 @@ pub fn get_shift<B: BuildHasher>(builder: &B, index: usize) -> f32 {
     let hash = builder.hash_one(&index) as u32;
     mantissa_to_float(hash)
 }
+
+/// Obtains a shift rounding value in Q16.16 fixed-point format for a given register index
+#[inline]
+pub fn get_shift_fixed<B: BuildHasher>(builder: &B, index: usize) -> i32 {
+    let hash = builder.hash_one(&index) as u32;
+    (hash >> 16) as i32
+}

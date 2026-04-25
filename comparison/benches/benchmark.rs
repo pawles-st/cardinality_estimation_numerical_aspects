@@ -3,7 +3,7 @@ use itertools::iproduct;
 
 use comparison::constants::{CARDINALITIES, DATA_SIZE_MULTIPLIES, PRECISIONS};
 use comparison::{Algorithm, Transform, get_transform_name, load_data};
-use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel};
+use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, TaylorIntegerGumbel};
 
 mod common;
 
@@ -16,7 +16,7 @@ fn benchmark(c: &mut Criterion) {
 
     // Algorithms and Transforms to test (similar to main.rs defaults)
     let algorithms = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllReal, Algorithm::GhllPlus];
-    let transforms = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack];
+    let transforms = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack, Transform::TaylorInteger];
 
     for prec in PRECISIONS {
         let mut group = c.benchmark_group("Cardinality Estimation");
@@ -55,6 +55,7 @@ fn benchmark(c: &mut Criterion) {
                     Transform::Icdf => { run_variants!(ICDFGumbel::default()); }
                     Transform::SimpleBithack => { run_variants!(SimpleBitHackGumbel::default()); }
                     Transform::TaylorBithack => { run_variants!(TaylorBitHackGumbel::default()); }
+                    Transform::TaylorInteger => { run_variants!(TaylorIntegerGumbel::default()); }
                 }
             }
         }

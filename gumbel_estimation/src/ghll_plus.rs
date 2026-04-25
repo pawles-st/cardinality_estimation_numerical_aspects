@@ -76,13 +76,13 @@ impl<B: BuildHasher, G: GumbelTransform> GHLLPlus<B, G> {
         self.free.set(index, false);
 
         // Create a Gumbel random variate
-        let gumbel_variate = self.transform.from_bits(hash);
+        let gumbel_fixed = self.transform.from_bits_fixed(hash);
         
         // Obtain the substream constant
-        let shift = get_shift(&self.builder, index);
+        let shift_fixed = get_shift_fixed(&self.builder, index);
 
         // Update the register to the current max of Gumbel random variables
-        self.registers.set_greater(index, Registers::encode(gumbel_variate, shift));
+        self.registers.set_greater(index, Registers::encode_fixed(gumbel_fixed, shift_fixed));
     }
 
     /// Returns the approximate cardinality of the stream,
