@@ -1,12 +1,7 @@
 use std::hash::{Hash, BuildHasher};
 
-/// Negative value of Euler gamma constant
 pub const NEG_GAMMA: f64 = -0.577_215_664_901_532_9_f64;
-
-/// Minimal accepted precision
 pub const MIN_PRECISION: u8 = 4;
-
-/// Maximal accepted precision
 pub const MAX_PRECISION: u8 = 16;
 
 #[derive(Debug)]
@@ -14,51 +9,32 @@ pub enum GumbelError {
     InvalidPrecision,
 }
 
-/// Hashes a value and splits it into a substream index and hash proper
 #[inline]
 pub fn hash_value<H, B>(value: &H, builder: &B, precision: u8) -> (usize, u32) 
 where
     H: Hash + ?Sized,
     B: BuildHasher,
 {
-    // obtain the value's hash
-    let mut hash = builder.hash_one(value) as u32;
-    
-    // choose a register based on the first `precision` bits
-    let index: usize = (hash >> (32 - precision)) as usize;
-
-    // discard the above bits from the hash
-    hash <<= precision;
-
-    (index, hash)
+    let hash = builder.hash_one(value);
+    // Use top bits for index, bottom 32 bits for remainder to avoid shift-induced zeros
+    let index = (hash >> (64 - precision)) as usize;
+    let remainder = hash as u32;
+    (index, remainder)
 }
 
-/// Creates a [0, 1) float from its binary representation
 #[inline]
 pub fn mantissa_to_float(bits: u32) -> f32 {
-    // Bits 30-23 hold the biased exponent; the value of 127
-    // corresponds to the unbiased exponent being equal to 0
     let exponent_bits = 127 << 23;
-
-    // Bits 22-0 hold the mantissa;
     let mantissa_bits = bits >> 9;
-
-    // Combine the bits
-    let bits = exponent_bits | mantissa_bits;
-
-    // Created float is of the form (1 + m), m \in [0, 1);
-    // subtract one to shift to [0, 1) range
-    f32::from_bits(bits) - 1.0
+    f32::from_bits(exponent_bits | mantissa_bits) - 1.0
 }
 
-/// Obtains a shift rounding value for a given register index
 #[inline]
 pub fn get_shift<B: BuildHasher>(builder: &B, index: usize) -> f32 {
     let hash = builder.hash_one(&index) as u32;
     mantissa_to_float(hash)
 }
 
-/// Obtains a shift rounding value in Q16.16 fixed-point format for a given register index
 #[inline]
 pub fn get_shift_fixed<B: BuildHasher>(builder: &B, index: usize) -> i32 {
     let hash = builder.hash_one(&index) as u32;

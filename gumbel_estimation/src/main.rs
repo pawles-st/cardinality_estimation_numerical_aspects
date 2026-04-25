@@ -1,28 +1,27 @@
-use gumbel_estimation::{GumbelTransform, TaylorIntegerGumbel, ICDFGumbel, GHLL};
+use gumbel_estimation::{GHLL, TaylorIntegerGumbel};
 use ahash::RandomState;
-use std::time::Instant;
 
 fn main() {
-    let iterations: u32 = 10_000_000;
-    let s = RandomState::new();
+    let p = 12;
+    let n = 10000;
+    let iterations = 100;
+    let builder = RandomState::with_seeds(0, 0, 0, 0);
     
-    let t_int = TaylorIntegerGumbel::new();
-    let t_icdf = ICDFGumbel::new();
+    let mut sum_geo = 0.0;
+    let mut sum_har = 0.0;
     
-    let mut ghll_int = GHLL::with_precision(12, s.clone(), t_int).unwrap();
-    let mut ghll_icdf = GHLL::with_precision(12, s.clone(), t_icdf).unwrap();
-    
-    // 1. Measure GHLL + TaylorInteger (Fixed-point path)
-    let start = Instant::now();
     for i in 0..iterations {
-        ghll_int.add(&i);
+        let mut ghll = GHLL::with_precision(p, builder.clone(), TaylorIntegerGumbel::new()).unwrap();
+        for j in 0..n {
+            ghll.add(&(i as u64 * 1000000 + j as u64));
+        }
+        sum_geo += ghll.count_geo();
+        sum_har += ghll.count_har();
     }
-    println!("GHLL TaylorInteger (LUT Fixed): {:?}", start.elapsed());
-
-    // 2. Measure GHLL + ICDF (FPU path)
-    let start = Instant::now();
-    for i in 0..iterations {
-        ghll_icdf.add(&i);
-    }
-    println!("GHLL ICDF (FPU):                {:?}", start.elapsed());
+    
+    println!("Taylor Integer (256-byte i8 LUT):");
+    println!("  Geo Mean: {}", sum_geo / iterations as f64);
+    println!("  Har Mean: {}", sum_har / iterations as f64);
+    println!("  Geo Ratio: {}", (sum_geo / iterations as f64) / n as f64);
+    println!("  Har Ratio: {}", (sum_har / iterations as f64) / n as f64);
 }
