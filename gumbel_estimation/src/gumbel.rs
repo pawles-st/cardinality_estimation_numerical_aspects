@@ -49,12 +49,10 @@ impl SimpleBitHackGumbel {
         Self{}
     }
 
-    #[inline]
+    #[inline(always)]
     fn bit_hack_ln(&self, x: f32) -> f32 {
-        let bits = x.to_bits();
-        let e = ((bits >> 23) & 0xFF) as i32 - 127;
-        let m = (bits & 0x7FFFFF) as f32 * INV_MANTISSA;
-        (e as f32 * LN_2) + m
+        const C2_SIMPLE: f32 = -88.02969186; // -(127.0 * LN_2), no SIGMA shift to prevent log(negative)
+        (x.to_bits() as f32).mul_add(C1, C2_SIMPLE)
     }
 }
 impl GumbelTransform for SimpleBitHackGumbel {
@@ -113,7 +111,7 @@ impl GumbelTransform for TaylorBitHackGumbel {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct TaylorIntegerGumbel;
 
-// 256-byte symmetric LUT (Q8.2) covering full u32 range
+// 256-byte symmetric LUT (Q6.2) covering full u32 range
 pub const GUMBEL_LUT: [i8; 256] = [
   -1,   0,   0,   1,  -3,  -2,  -2,  -1,
   -4,  -4,  -3,  -3,  -5,  -5,  -4,  -4,

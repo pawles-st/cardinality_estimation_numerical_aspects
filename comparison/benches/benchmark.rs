@@ -14,8 +14,10 @@ fn benchmark(c: &mut Criterion) {
         .filter(|(card, mult)| card * mult <= 1_000_000_000)
         .collect();
 
-    // Algorithms and Transforms to test (similar to main.rs defaults)
-    let algorithms = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllReal, Algorithm::GhllPlus];
+    // Algorithms and Transforms to test
+    // To match the boxplot changes, we benchmark only a single GHLL variant (e.g., GhllPlus)
+    // against all transforms.
+    let algorithms = vec![Algorithm::Hll, Algorithm::GhllPlus];
     let transforms = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack, Transform::TaylorInteger];
 
     for prec in PRECISIONS {
