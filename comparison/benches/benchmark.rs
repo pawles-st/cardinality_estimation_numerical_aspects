@@ -3,7 +3,7 @@ use itertools::iproduct;
 
 use comparison::constants::{CARDINALITIES, DATA_SIZE_MULTIPLIES, PRECISIONS};
 use comparison::{Algorithm, Transform, get_transform_name, load_data};
-use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, TaylorIntegerGumbel};
+use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, LUTGumbel, PadeGumbel, SplineGumbel};
 
 mod common;
 
@@ -18,7 +18,14 @@ fn benchmark(c: &mut Criterion) {
     // To match the boxplot changes, we benchmark only a single GHLL variant (e.g., GhllPlus)
     // against all transforms.
     let algorithms = vec![Algorithm::Hll, Algorithm::GhllPlus];
-    let transforms = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack, Transform::TaylorInteger];
+    let transforms = vec![
+        Transform::Icdf,
+        Transform::SimpleBithack,
+        Transform::TaylorBithack,
+        Transform::LUT,
+        Transform::Pade,
+        Transform::Spline,
+    ];
 
     for prec in PRECISIONS {
         let mut group = c.benchmark_group("Cardinality Estimation");
@@ -57,7 +64,9 @@ fn benchmark(c: &mut Criterion) {
                     Transform::Icdf => { run_variants!(ICDFGumbel::default()); }
                     Transform::SimpleBithack => { run_variants!(SimpleBitHackGumbel::default()); }
                     Transform::TaylorBithack => { run_variants!(TaylorBitHackGumbel::default()); }
-                    Transform::TaylorInteger => { run_variants!(TaylorIntegerGumbel::default()); }
+                    Transform::LUT => { run_variants!(LUTGumbel::default()); }
+                    Transform::Pade => { run_variants!(PadeGumbel::default()); }
+                    Transform::Spline => { run_variants!(SplineGumbel::default()); }
                 }
             }
         }

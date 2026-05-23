@@ -26,7 +26,7 @@ gumbel.algs <- c(
 				"GHLLPlus" = "GumbelHyperLogLog+"
 )
 
-transforms <- c("ICDF", "SimpleBitHack", "TaylorBitHack", "TaylorInteger")
+transforms <- c("ICDF", "SimpleBitHack", "TaylorBitHack", "LUT", "Pade", "Spline")
 
 # Plot generation
 

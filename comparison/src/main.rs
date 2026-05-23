@@ -1,7 +1,7 @@
 use ahash::random_state::RandomState;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
-use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, TaylorIntegerGumbel};
+use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, LUTGumbel, PadeGumbel, SplineGumbel};
 use std::io;
 
 use comparison::{gather_hll, gather_ghll, gather_ghllreal, gather_ghllplus, get_transform_name, load_data, save_to_file, Algorithm, Transform};
@@ -31,7 +31,7 @@ struct Args {
     algorithms: Vec<Algorithm>,
 
     /// Gumbel Transforms to test (e.g. icdf, simple-bithack, taylor-bithack; defaults to all of them)
-    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack])]
+    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack, Transform::LUT, Transform::Pade, Transform::Spline])]
     transforms: Vec<Transform>,
 
 }
@@ -106,7 +106,9 @@ fn main() -> io::Result<()> {
                     Transform::Icdf => { run_variants!(ICDFGumbel::default()); }
                     Transform::SimpleBithack => { run_variants!(SimpleBitHackGumbel::default()); }
                     Transform::TaylorBithack => { run_variants!(TaylorBitHackGumbel::default()); }
-                    Transform::TaylorInteger => { run_variants!(TaylorIntegerGumbel::default()); }
+                    Transform::LUT => { run_variants!(LUTGumbel::default()); }
+                    Transform::Pade => { run_variants!(PadeGumbel::default()); }
+                    Transform::Spline => { run_variants!(SplineGumbel::default()); }
                 }
             }
         }
