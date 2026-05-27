@@ -20,7 +20,7 @@ const fn array_from_range<const K: usize>(begin: usize, step: usize) -> [usize; 
 // cardinalities of the underlying multisets
 //pub const CARDINALITIES: [usize; 50] = array_from_range(10_000, 10_000); // large datasets
 //pub const CARDINALITIES: [usize; 2000] = array_from_range(1, 1); // small datasets
-pub const CARDINALITIES: [usize; 1] = [10000]; // large datasets
+pub const CARDINALITIES: [usize; 5] = array_from_range(10_000, 10_000); // 5 points for line plot
 
 // dataset size multiplies; the size of the dataset
 // is calculated as `cardinality * data_size_multiply`
@@ -29,7 +29,8 @@ pub const DATA_SIZE_MULTIPLIES: [usize; 1] = [100]; // large datasets
 
 // precisions to use for the HyperLogLog and Gumbel estimators;
 // the number of registers used is equal to `2^precision`
-pub const PRECISIONS: [u8; 4] = [4, 8, 12, 16];
+//pub const PRECISIONS: [u8; 4] = [4, 8, 12, 16];
+pub const PRECISIONS: [u8; 1] = [12];
 
 // the number of iterations per single dataset
 pub const ITERATIONS: usize = 100;

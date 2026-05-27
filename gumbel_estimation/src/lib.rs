@@ -1,5 +1,3 @@
-use std::hash::{BuildHasher, Hash};
-
 mod common;
 mod registers;
 
@@ -7,12 +5,25 @@ pub mod gumbel;
 pub mod ghll;
 pub mod ghll_real;
 pub mod ghll_plus;
+pub mod ghll_float;
 
 pub use ghll::GHLL;
 pub use ghll_real::GHLLReal;
-
-pub use gumbel::{GumbelTransform, ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, LUTGumbel, PadeGumbel, SplineGumbel};
 pub use ghll_plus::GHLLPlus;
+pub use ghll_float::GHLLFloat;
+
+pub use gumbel::{
+    GumbelTransform, 
+    ICDFGumbel, 
+    PadeGumbel, 
+    BasicBitHackGumbel,
+ 
+    TaylorBitHackGumbel, 
+    SplineGumbel, 
+    LUTGumbel
+};
+
+use std::hash::{BuildHasher, Hash};
 
 pub trait GumbelEstimator<T: ?Sized> {
     fn add(&mut self, value: &T);

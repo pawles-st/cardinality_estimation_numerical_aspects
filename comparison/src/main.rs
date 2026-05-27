@@ -1,10 +1,11 @@
 use ahash::random_state::RandomState;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
-use gumbel_estimation::{ICDFGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, LUTGumbel, PadeGumbel, SplineGumbel};
+use gumbel_estimation::{ICDFGumbel, PadeGumbel, BasicBitHackGumbel, TaylorBitHackGumbel, SplineGumbel, LUTGumbel};
 use std::io;
+use rayon::prelude::*;
 
-use comparison::{gather_hll, gather_ghll, gather_ghllreal, gather_ghllplus, get_transform_name, load_data, save_to_file, Algorithm, Transform};
+use comparison::{run_hll, run_ghll, run_ghllreal, run_ghllplus, run_ghllfloat, get_transform_name, load_data, save_to_file, Algorithm, Transform};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Gumbel HLL Thesis Comparison Tool")]
@@ -26,91 +27,121 @@ struct Args {
     #[arg(short, long, default_value_t = 100)]
     iterations: usize,
 
-    /// Algorithms to test (e.g. hll, ghll, ghllreal, ghllplus; defaults to all of them)
-    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllReal, Algorithm::GhllPlus])]
+    /// Algorithms to test (e.g. hll, ghll, ghllreal, ghllplus, ghllfloat; defaults to all of them)
+    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllReal, Algorithm::GhllPlus, Algorithm::GhllFloat])]
     algorithms: Vec<Algorithm>,
 
-    /// Gumbel Transforms to test (e.g. icdf, simple-bithack, taylor-bithack; defaults to all of them)
-    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::SimpleBithack, Transform::TaylorBithack, Transform::LUT, Transform::Pade, Transform::Spline])]
+    /// Gumbel Transforms to test (e.g. icdf, pade, basic-bithack, taylor-bithack, spline, lut; defaults to all of them)
+    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::Pade, Transform::BasicBithack, Transform::TaylorBithack, Transform::Spline, Transform::LUT])]
     transforms: Vec<Transform>,
 
+}
+
+struct IterationResults {
+    hll: Option<f64>,
+    ghll: Vec<(Transform, (f64, f64))>,
+    ghll_real: Vec<(Transform, (f64, f64))>,
+    ghll_plus: Vec<(Transform, f64)>,
+    ghll_float: Vec<(Transform, f64)>,
 }
 
 fn main() -> io::Result<()> {
     let args = Args::parse();
     let multi = MultiProgress::new();
 
-    // Calculate total steps
-    let gumbel_variants = (if args.algorithms.contains(&Algorithm::Ghll) { 1 } else { 0 })
-        + (if args.algorithms.contains(&Algorithm::GhllReal) { 1 } else { 0 })
-        + (if args.algorithms.contains(&Algorithm::GhllPlus) { 1 } else { 0 });
-    
-    let algs_per_config = (if args.algorithms.contains(&Algorithm::Hll) { 1 } else { 0 })
-        + args.transforms.len() * gumbel_variants;
-    
-    let total_steps = (args.cardinalities.len() * args.precisions.len() * algs_per_config) as u64;
+    let total_steps = (args.cardinalities.len() * args.precisions.len()) as u64;
 
     // Prepare metadata
     let main_pb = multi.add(ProgressBar::new(total_steps));
     main_pb.set_style(ProgressStyle::with_template("[{elapsed_precise}] {bar:40.cyan} {pos}/{len} {msg}").unwrap());
 
     for &card in &args.cardinalities {
-        // Load the dataset
         let mult = args.multiplier;
         let size = card * mult;
         let data = load_data(card, size)?;
 
         for &prec in &args.precisions {
-            // Create hash builders for each iteration
-            let builders: Vec<_> = (0..args.iterations).map(|_| RandomState::new()).collect();
+            main_pb.set_message(format!("Processing p={}, n={}...", prec, card));
+            
+            // Create deterministic hash builders
+            let builders: Vec<_> = (0..args.iterations).map(|i| RandomState::with_seeds(i as u64, 0, 0, 0)).collect();
 
-            // Run HLL
+            // UNIFIED PARALLEL LOOP: Run all algorithms for each builder
+            let all_results: Vec<IterationResults> = builders.into_par_iter().map(|builder| {
+                let mut res = IterationResults {
+                    hll: None,
+                    ghll: Vec::new(),
+                    ghll_real: Vec::new(),
+                    ghll_plus: Vec::new(),
+                    ghll_float: Vec::new(),
+                };
+
+                if args.algorithms.contains(&Algorithm::Hll) {
+                    res.hll = Some(run_hll(prec, &data, &builder));
+                }
+
+                for &t_enum in &args.transforms {
+                    macro_rules! run_for_transform {
+                        ($t_obj:expr) => {
+                            let t = $t_obj;
+                            if args.algorithms.contains(&Algorithm::Ghll) {
+                                res.ghll.push((t_enum, run_ghll(prec, &data, &builder, t)));
+                            }
+                            if args.algorithms.contains(&Algorithm::GhllReal) {
+                                res.ghll_real.push((t_enum, run_ghllreal(prec, &data, &builder, t)));
+                            }
+                            if args.algorithms.contains(&Algorithm::GhllPlus) {
+                                res.ghll_plus.push((t_enum, run_ghllplus(prec, &data, &builder, t)));
+                            }
+                            if args.algorithms.contains(&Algorithm::GhllFloat) {
+                                res.ghll_float.push((t_enum, run_ghllfloat(prec, &data, &builder, t)));
+                            }
+                        };
+                    }
+
+                    match t_enum {
+                        Transform::Icdf => { run_for_transform!(ICDFGumbel::default()); }
+                        Transform::Pade => { run_for_transform!(PadeGumbel::default()); }
+                        Transform::BasicBithack => { run_for_transform!(BasicBitHackGumbel::default()); }
+                        Transform::TaylorBithack => { run_for_transform!(TaylorBitHackGumbel::default()); }
+                        Transform::Spline => { run_for_transform!(SplineGumbel::default()); }
+                        Transform::LUT => { run_for_transform!(LUTGumbel::default()); }
+                    }
+                }
+                res
+            }).collect();
+
+            // SAVE RESULTS: Pivot the collected data back to files
             if args.algorithms.contains(&Algorithm::Hll) {
-                main_pb.set_message(format!("HLL (p={}, n={})...", prec, card));
-                let res = gather_hll(prec, &data, &builders);
-                save_to_file("HLL", prec, card, size, res)?;
-                main_pb.inc(1);
+                let hll_vec: Vec<_> = all_results.iter().map(|r| r.hll.unwrap()).collect();
+                save_to_file("HLL", prec, card, size, hll_vec)?;
             }
 
-            // Run Gumbel variants
             for &t_enum in &args.transforms {
                 let t_name = get_transform_name(t_enum);
-
-                macro_rules! run_variants {
-                    ($transform:expr) => {
-                        let t = $transform;
-                        if args.algorithms.contains(&Algorithm::Ghll) {
-                            main_pb.set_message(format!("GHLL {} (p={}, n={})...", t_name, prec, card));
-                            let (geo, har) = gather_ghll(prec, &data, &builders, t);
-                            save_to_file(&format!("GHLLGeo_{}", t_name), prec, card, size, geo)?;
-                            save_to_file(&format!("GHLLHar_{}", t_name), prec, card, size, har)?;
-                            main_pb.inc(1);
-                        }
-                        if args.algorithms.contains(&Algorithm::GhllReal) {
-                            main_pb.set_message(format!("GHLLReal {} (p={}, n={})...", t_name, prec, card));
-                            let (geo, har) = gather_ghllreal(prec, &data, &builders, t);
-                            save_to_file(&format!("GHLLRealGeo_{}", t_name), prec, card, size, geo)?;
-                            save_to_file(&format!("GHLLRealHar_{}", t_name), prec, card, size, har)?;
-                            main_pb.inc(1);
-                        }
-                        if args.algorithms.contains(&Algorithm::GhllPlus) {
-                            main_pb.set_message(format!("GHLLPlus {} (p={}, n={})...", t_name, prec, card));
-                            let res = gather_ghllplus(prec, &data, &builders, t);
-                            save_to_file(&format!("GHLLPlus_{}", t_name), prec, card, size, res)?;
-                            main_pb.inc(1);
-                        }
-                    };
+                
+                if args.algorithms.contains(&Algorithm::Ghll) {
+                    let geo: Vec<_> = all_results.iter().map(|r| r.ghll.iter().find(|(te, _)| *te == t_enum).unwrap().1.0).collect();
+                    let har: Vec<_> = all_results.iter().map(|r| r.ghll.iter().find(|(te, _)| *te == t_enum).unwrap().1.1).collect();
+                    save_to_file(&format!("GHLLGeo_{}", t_name), prec, card, size, geo)?;
+                    save_to_file(&format!("GHLLHar_{}", t_name), prec, card, size, har)?;
                 }
-
-                match t_enum {
-                    Transform::Icdf => { run_variants!(ICDFGumbel::default()); }
-                    Transform::SimpleBithack => { run_variants!(SimpleBitHackGumbel::default()); }
-                    Transform::TaylorBithack => { run_variants!(TaylorBitHackGumbel::default()); }
-                    Transform::LUT => { run_variants!(LUTGumbel::default()); }
-                    Transform::Pade => { run_variants!(PadeGumbel::default()); }
-                    Transform::Spline => { run_variants!(SplineGumbel::default()); }
+                if args.algorithms.contains(&Algorithm::GhllReal) {
+                    let geo: Vec<_> = all_results.iter().map(|r| r.ghll_real.iter().find(|(te, _)| *te == t_enum).unwrap().1.0).collect();
+                    let har: Vec<_> = all_results.iter().map(|r| r.ghll_real.iter().find(|(te, _)| *te == t_enum).unwrap().1.1).collect();
+                    save_to_file(&format!("GHLLRealGeo_{}", t_name), prec, card, size, geo)?;
+                    save_to_file(&format!("GHLLRealHar_{}", t_name), prec, card, size, har)?;
+                }
+                if args.algorithms.contains(&Algorithm::GhllPlus) {
+                    let vals: Vec<_> = all_results.iter().map(|r| r.ghll_plus.iter().find(|(te, _)| *te == t_enum).unwrap().1).collect();
+                    save_to_file(&format!("GHLLPlus_{}", t_name), prec, card, size, vals)?;
+                }
+                if args.algorithms.contains(&Algorithm::GhllFloat) {
+                    let vals: Vec<_> = all_results.iter().map(|r| r.ghll_float.iter().find(|(te, _)| *te == t_enum).unwrap().1).collect();
+                    save_to_file(&format!("GHLLFloatGeo_{}", t_name), prec, card, size, vals)?;
                 }
             }
+            main_pb.inc(1);
         }
     }
 

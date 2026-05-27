@@ -7,3 +7,11 @@ edition = "2021"
 ahash = "0.8.11"
 bitvec = "1.0.1"
 rand = "0.8.5"
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+hyperloglogplus = "0.4.1"
+
+[[bench]]
+name = "ghll_bench"
+harness = false

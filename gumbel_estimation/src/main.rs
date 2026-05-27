@@ -1,4 +1,4 @@
-use gumbel_estimation::{GHLL, LUTGumbel, ICDFGumbel, PadeGumbel, SplineGumbel, GumbelTransform};
+use gumbel_estimation::{GHLL, ICDFGumbel, PadeGumbel, BasicBitHackGumbel, TaylorBitHackGumbel, SplineGumbel, LUTGumbel, GumbelTransform};
 use ahash::RandomState;
 use std::time::Instant;
 
@@ -33,9 +33,13 @@ fn main() {
     
     run_experiment("Standard ICDF (f32::ln)", p, n, iterations, builder.clone(), ICDFGumbel::new());
     println!();
-    run_experiment("LUT (256-byte i8 table)", p, n, iterations, builder.clone(), LUTGumbel::new());
-    println!();
     run_experiment("Padé Approximant (Rational + LN_TABLE)", p, n, iterations, builder.clone(), PadeGumbel::new());
     println!();
+    run_experiment("Basic Bit-Hack", p, n, iterations, builder.clone(), BasicBitHackGumbel::new());
+    println!();
+    run_experiment("Taylor Bit-Hack (Branching)", p, n, iterations, builder.clone(), TaylorBitHackGumbel::new());
+    println!();
     run_experiment("Linear Spline (1024-entry LUT + FMA)", p, n, iterations, builder.clone(), SplineGumbel::new());
+    println!();
+    run_experiment("LUT (256-byte i8 table)", p, n, iterations, builder.clone(), LUTGumbel::new());
 }

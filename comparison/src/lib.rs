@@ -13,26 +13,27 @@ pub enum Algorithm {
     Ghll,
     GhllReal,
     GhllPlus,
+    GhllFloat,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, Copy, Eq, Hash)]
 pub enum Transform {
     Icdf,
-    SimpleBithack,
-    TaylorBithack,
-    LUT,
     Pade,
+    BasicBithack,
+    TaylorBithack,
     Spline,
+    LUT,
 }
 
 pub fn get_transform_name(t: Transform) -> &'static str {
     match t {
         Transform::Icdf => "ICDF",
-        Transform::SimpleBithack => "SimpleBitHack",
-        Transform::TaylorBithack => "TaylorBitHack",
-        Transform::LUT => "LUT",
         Transform::Pade => "Pade",
+        Transform::BasicBithack => "BasicBithack",
+        Transform::TaylorBithack => "TaylorBitHack",
         Transform::Spline => "Spline",
+        Transform::LUT => "LUT",
     }
 }
 
@@ -66,6 +67,37 @@ pub fn load_data(card: usize, size: usize) -> Result<Vec<u64>, io::Error> {
     }).collect()
 }
 
+// Single-iteration worker functions
+pub fn run_hll(prec: u8, data: &[u64], builder: &RandomState) -> f64 {
+    let mut estimator = HyperLogLogPF::<u64, _>::new(prec, builder.clone()).unwrap();
+    for &value in data { estimator.insert(&value) }
+    estimator.count()
+}
+
+pub fn run_ghll<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> (f64, f64) {
+    let mut estimator = GHLL::with_precision(prec, builder.clone(), transform).unwrap();
+    for &value in data { estimator.add(&value) }
+    (estimator.count_geo(), estimator.count_har())
+}
+
+pub fn run_ghllreal<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> (f64, f64) {
+    let mut estimator = GHLLReal::with_precision(prec, builder.clone(), transform).unwrap();
+    for &value in data { estimator.add(&value) }
+    (estimator.count_geo(), estimator.count_har())
+}
+
+pub fn run_ghllplus<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> f64 {
+    let mut estimator = GHLLPlus::with_precision(prec, builder.clone(), transform).unwrap();
+    for &value in data { estimator.add(&value) }
+    estimator.count()
+}
+
+pub fn run_ghllfloat<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> f64 {
+    let mut estimator = gumbel_estimation::GHLLFloat::with_precision(prec, builder.clone(), transform).unwrap();
+    for &value in data { estimator.add(&value) }
+    estimator.count_geo()
+}
+
 // Run experiments for HLL
 pub fn gather_hll(
     prec: u8,
@@ -73,9 +105,7 @@ pub fn gather_hll(
     builders: &[RandomState],
 ) -> Vec<f64> {
     builders.into_par_iter().map(|builder| {
-        let mut estimator = HyperLogLogPF::<u64, _>::new(prec, builder.clone()).unwrap();
-        for &value in data { estimator.insert(&value) }
-        estimator.count()
+        run_hll(prec, data, builder)
     }).collect()
 }
 
@@ -118,5 +148,19 @@ pub fn gather_ghllplus<G: GumbelTransform + Copy + Send + Sync>(
         let mut estimator = GHLLPlus::with_precision(prec, builder.clone(), transform).unwrap();
         for &value in data { estimator.add(&value) }
         estimator.count()
+    }).collect()
+}
+
+// Run experiments for GHLLFloat (Geo only)
+pub fn gather_ghllfloat<G: GumbelTransform + Copy + Send + Sync>(
+    prec: u8,
+    data: &[u64],
+    builders: &[RandomState],
+    transform: G,
+) -> Vec<f64> {
+    builders.into_par_iter().map(|builder| {
+        let mut estimator = gumbel_estimation::GHLLFloat::with_precision(prec, builder.clone(), transform).unwrap();
+        for &value in data { estimator.add(&value) }
+        estimator.count_geo()
     }).collect()
 }
