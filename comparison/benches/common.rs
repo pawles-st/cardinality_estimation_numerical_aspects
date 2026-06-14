@@ -10,9 +10,9 @@ where
     T: Hash,
     M: Measurement,
 {
-    // ID is just the name; the parameter (card) goes in the second argument
+    let builder = RandomState::with_seeds(0, 0, 0, 0);
     g.bench_with_input(BenchmarkId::new("HyperLogLog", card), data, |b, data| b.iter(|| {
-        let mut estimator = HyperLogLogPF::<T, _>::new(12, RandomState::new()).unwrap();
+        let mut estimator = HyperLogLogPF::<T, _>::new(12, builder.clone()).unwrap();
         for d in data {
             estimator.insert(d);
         }
@@ -26,8 +26,9 @@ where
     M: Measurement,
     G: GumbelTransform + Copy,
 {
+    let builder = RandomState::with_seeds(0, 0, 0, 0);
     g.bench_with_input(BenchmarkId::new(format!("GHLL_{}", t_name), card), data, |b, data| b.iter(|| {
-        let mut estimator = GHLL::<_, G>::with_precision(12, RandomState::new(), transform).unwrap();
+        let mut estimator = GHLL::<_, G>::with_precision(12, builder.clone(), transform).unwrap();
         for d in data {
             estimator.add(d);
         }
@@ -42,8 +43,9 @@ where
     M: Measurement,
     G: GumbelTransform + Copy,
 {
+    let builder = RandomState::with_seeds(0, 0, 0, 0);
     g.bench_with_input(BenchmarkId::new(format!("GHLLReal_{}", t_name), card), data, |b, data| b.iter(|| {
-        let mut estimator = GHLLReal::<_, G>::with_precision(12, RandomState::new(), transform).unwrap();
+        let mut estimator = GHLLReal::<_, G>::with_precision(12, builder.clone(), transform).unwrap();
         for d in data {
             estimator.add(d);
         }
@@ -58,11 +60,13 @@ where
     M: Measurement,
     G: GumbelTransform + Copy,
 {
+    let builder = RandomState::with_seeds(0, 0, 0, 0);
     g.bench_with_input(BenchmarkId::new(format!("GHLLPlus_{}", t_name), card), data, |b, data| b.iter(|| {
-        let mut estimator = GHLLPlus::<_, G>::with_precision(12, RandomState::new(), transform).unwrap();
+        let mut estimator = GHLLPlus::<_, G>::with_precision(12, builder.clone(), transform).unwrap();
         for d in data {
             estimator.add(d);
         }
         let _estimate = estimator.count();
     }));
 }
+

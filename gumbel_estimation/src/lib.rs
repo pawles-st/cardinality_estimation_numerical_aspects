@@ -14,11 +14,11 @@ pub use ghll_float::GHLLFloat;
 
 pub use gumbel::{
     GumbelTransform, 
-    ICDFGumbel, 
+    NaiveGumbel, 
     PadeGumbel, 
     BasicBitHackGumbel,
  
-    TaylorBitHackGumbel, 
+    CorrectedBitHackGumbel, 
     SplineGumbel, 
     LUTGumbel
 };

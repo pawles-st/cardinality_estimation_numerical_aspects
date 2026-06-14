@@ -1,91 +1,106 @@
 source("common.R")
 
-# viable datasets
-
-cardinalities <- list(seq(from = 1, to = 2000, by = 1), seq(from = 10000, to = 800000, by = 10000))
-mult <- list(10, 100)
-
-# experiments config
-
+# datasets config
+cardinalities <- seq(from = 10000, to = 600000, by = 10000)
+mult <- 100
 precisions <- c(4, 8, 12, 16)
-iters <- list(5, 100)
+iters <- 100
 
-# viable algorithms
+# algorithms specification
+ghll.variant <- "GHLLPlus"
+base.algs <- c("HLL" = "HyperLogLog")
+gumbel.algs <- c("GHLLPlus" = "GumbelHyperLogLog")
+transforms <- c("Naive", "BasicBitHack", "CorrectedBitHack", "LUT", "Pade", "Spline")
 
-algorithms <- c("HLL", "GHLLGeo", "GHLLHar", "GHLLPlus")
-algorithms.readable <- c("HyperLogLog", "GumbelHyperLogLog (średnia geometryczna)", "GumbelHyperLogLog (średnia harmoniczna)", "GumbelHyperLogLog+")
+# All algorithms to plot separately
+all_algs <- c(names(base.algs))
+for (trans in transforms) {
+    all_algs <- c(all_algs, paste0(ghll.variant, "_", trans))
+}
 
-# algorithm and dataset type to process
-
-alg.chosen <- 4
-data.chosen <- 2
-
-# overwrite the variables with the chosen set
-
-cardinalities <- cardinalities[[data.chosen]]
-mult <- mult[[data.chosen]]
-iters <- iters[[data.chosen]]
-
-alg <- algorithms[alg.chosen]
-alg.readable <- algorithms.readable[alg.chosen]
-
-# create the plots
-
+# Plot generation
 for (prec in precisions) {
+    for (alg in all_algs) {
+        
+        # Determine readable name and color
+        alg_col <- "#27ae60" # Default Green
+        if (alg == "HLL") {
+            alg_name <- "HyperLogLog"
+            alg_col <- "#555555"
+        } else {
+            trans_part <- sub(paste0(ghll.variant, "_"), "", alg)
+            alg_name <- trans_part
+            # Map to triadic colors
+            if (trans_part == "Naive") alg_col <- "#27ae60"
+            if (trans_part == "Pade") alg_col <- "#2ecc71"
+            if (trans_part == "BasicBitHack") alg_col <- "#9b59b6"
+            if (trans_part == "CorrectedBitHack") alg_col <- "#8e44ad"
+            if (trans_part == "Spline") alg_col <- "#f39c12"
+            if (trans_part == "LUT") alg_col <- "#e67e22"
+        }
 
-	estimates <- list()
-	means <- c()
+        estimates <- list()
+        valid_cards <- c()
 
-	for (card in cardinalities) {
+        # Read estimates for each cardinality
+        for (card in cardinalities) {
+            # Check if file exists before reading
+            data.text <- paste(alg, prec, format(card, scientific = FALSE), format(card * mult, scientific = FALSE), sep = '_')
+            filename <- paste0("../results/", data.text, ".txt")
+            
+            if (file.exists(filename)) {
+                alg.estimates <- read.data(alg, prec, card, mult)
+                estimates <- c(estimates, list(alg.estimates / card))
+                valid_cards <- c(valid_cards, card)
+            }
+        }
 
-		# read all estimates
+        if (length(estimates) == 0) next
 
-		alg.estimates <- read.data(algorithms[alg.chosen], prec, card, mult)
-		estimates <- c(estimates, list(alg.estimates / card))
-		means <- c(means, mean(alg.estimates) / card)
-	}
+        # Create the plot
+        png(paste0("scatter_n_trend_", alg, "_", prec, ".png"), width = 1200, height = 900, res = 120)
+        par(mar = c(6, 7, 5, 2)) # Increased left and bottom margins
 
-	# create a comparison scatterplot
+        # Flatten estimates for plotting
+        y_vals <- unlist(estimates)
+        x_vals <- rep(valid_cards, each = iters)
 
-	png(paste0("scatter_", alg, "_", prec, ".png"), width = 1920, height = 1080)
+        # Calculate limits for better visibility
+        y_min <- min(y_vals)
+        y_max <- max(y_vals)
+        
+        # Determine fixed limits or dynamic ones
+        y_lim_min <- min(1.0, max(0.5, y_min - 0.05))
+        y_lim_max <- max(1.0, min(1.5, y_max + 0.05))
 
-	err <- unlist(estimates) - 1
-	err[err < 0] <- 0
-	up.diff <- max(err)
-	err <- 1 - unlist(estimates)
-	err[err < 0] <- 0
-	down.diff <- max(err)
-	
-	par(mar = c(6, 6, 4, 2))
-	down.diff
+        plot(x = x_vals,
+             y = y_vals,
+             main = paste0(alg_name, " (k = 2^", prec, ")"),
+             xlab = "Liczba unikalnych elementów (n)",
+             ylab = "Estymacja / Liczba unikalnych elementów",
+             ylim = c(y_lim_min, y_lim_max),
+             col = adjustcolor(alg_col, alpha.f = 0.2), 
+             pch = 16,
+             cex = 0.8,
+             cex.main = 2,
+             cex.axis = 1.5,
+             cex.lab = 1.8,
+             las = 1,
+             mgp = c(4, 1, 0) # Adjust title/label placement to avoid overlap
+        )
 
-	plot(x = rep(cardinalities, each = iters),
-		y = unlist(estimates),
-		main = paste0("Wykres punktowy dla algorytmu ", alg.readable, " (k = ", 2^prec, ")"),
-		xlab = "",
-		ylab = "",
-		ylim = c(1 - min(1.5 * down.diff, 0.5), 1 + min(1.5 * up.diff, 0.5)),
-		col = rep(rep("green", each = iters), times = length(cardinalities)),
-		pch = 16,
-		cex.main = 3,
-		cex.axis = 2.5
-	)
-	
-	title(xlab = "Liczba unikalnych elementów", line = 3.5, cex.lab = 3)
-	title(ylab = "Estymacja / Liczba unikalnych elementów", line = 3.5, cex.lab = 3)
+        # Mark the means for each n
+        means <- sapply(estimates, mean)
+        lines(x = valid_cards, y = means, col = "red", lwd = 4)
+        points(x = valid_cards, y = means, col = "red", pch = 18, cex = 1.5)
 
-	# mark the means
+        # Ideal result line
+        abline(h = 1, lwd = 2, lty = 2, col = "black")
 
-	#points(x = cardinalities,
-		#y = means,
-		#col = rep("red", times = length(cardinalities)),
-	#)
+        # Add a frame (box) around the plot
+        box(lwd = 2)
 
-	# mark the ideal result with a line
-
-	abline(h = 1, lwd = 2)
-
-	# add a legend
-
-	dev.off()
+        dev.off()
+        cat(paste0("Generated n-trend scatterplot: scatter_n_trend_", alg, "_", prec, ".png\n"))
+    }
 }

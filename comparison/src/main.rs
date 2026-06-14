@@ -1,7 +1,7 @@
 use ahash::random_state::RandomState;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle, MultiProgress};
-use gumbel_estimation::{ICDFGumbel, PadeGumbel, BasicBitHackGumbel, TaylorBitHackGumbel, SplineGumbel, LUTGumbel};
+use gumbel_estimation::{NaiveGumbel, PadeGumbel, BasicBitHackGumbel, CorrectedBitHackGumbel, SplineGumbel, LUTGumbel};
 use std::io;
 use rayon::prelude::*;
 
@@ -31,8 +31,8 @@ struct Args {
     #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllReal, Algorithm::GhllPlus, Algorithm::GhllFloat])]
     algorithms: Vec<Algorithm>,
 
-    /// Gumbel Transforms to test (e.g. icdf, pade, basic-bithack, taylor-bithack, spline, lut; defaults to all of them)
-    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::Pade, Transform::BasicBithack, Transform::TaylorBithack, Transform::Spline, Transform::LUT])]
+    /// Gumbel Transforms to test (e.g. icdf, pade, basic-bithack, corrected-bithack, spline, lut; defaults to all of them)
+    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::Pade, Transform::BasicBithack, Transform::CorrectedBithack, Transform::Spline, Transform::LUT])]
     transforms: Vec<Transform>,
 
 }
@@ -100,10 +100,10 @@ fn main() -> io::Result<()> {
                     }
 
                     match t_enum {
-                        Transform::Icdf => { run_for_transform!(ICDFGumbel::default()); }
+                        Transform::Icdf => { run_for_transform!(NaiveGumbel::default()); }
                         Transform::Pade => { run_for_transform!(PadeGumbel::default()); }
                         Transform::BasicBithack => { run_for_transform!(BasicBitHackGumbel::default()); }
-                        Transform::TaylorBithack => { run_for_transform!(TaylorBitHackGumbel::default()); }
+                        Transform::CorrectedBithack => { run_for_transform!(CorrectedBitHackGumbel::default()); }
                         Transform::Spline => { run_for_transform!(SplineGumbel::default()); }
                         Transform::LUT => { run_for_transform!(LUTGumbel::default()); }
                     }

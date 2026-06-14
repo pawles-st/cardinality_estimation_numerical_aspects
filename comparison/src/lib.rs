@@ -21,17 +21,17 @@ pub enum Transform {
     Icdf,
     Pade,
     BasicBithack,
-    TaylorBithack,
+    CorrectedBithack,
     Spline,
     LUT,
 }
 
 pub fn get_transform_name(t: Transform) -> &'static str {
     match t {
-        Transform::Icdf => "ICDF",
+        Transform::Icdf => "Naive",
         Transform::Pade => "Pade",
-        Transform::BasicBithack => "BasicBithack",
-        Transform::TaylorBithack => "TaylorBitHack",
+        Transform::BasicBithack => "BasicBitHack",
+        Transform::CorrectedBithack => "CorrectedBitHack",
         Transform::Spline => "Spline",
         Transform::LUT => "LUT",
     }

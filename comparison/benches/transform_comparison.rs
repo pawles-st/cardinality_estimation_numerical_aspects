@@ -3,7 +3,7 @@ use itertools::iproduct;
 
 use comparison::constants::{CARDINALITIES, DATA_SIZE_MULTIPLIES};
 use comparison::{Transform, get_transform_name, load_data};
-use gumbel_estimation::{ICDFGumbel, PadeGumbel, SimpleBitHackGumbel, TaylorBitHackGumbel, SplineGumbel, LUTGumbel};
+use gumbel_estimation::{NaiveGumbel, PadeGumbel, BasicBitHackGumbel, CorrectedBitHackGumbel, SplineGumbel, LUTGumbel};
 
 mod common;
 
@@ -17,8 +17,8 @@ fn benchmark(c: &mut Criterion) {
     let transforms = vec![
         Transform::Icdf,
         Transform::Pade,
-        Transform::SimpleBithack,
-        Transform::TaylorBithack,
+        Transform::BasicBithack,
+        Transform::CorrectedBithack,
         Transform::Spline,
         Transform::LUT,
     ];
@@ -37,10 +37,10 @@ fn benchmark(c: &mut Criterion) {
         for &t_enum in &transforms {
             let t_name = get_transform_name(t_enum);
             match t_enum {
-                Transform::Icdf => { bench_ghllplus(&mut group, t_name, *card, &data, ICDFGumbel::default()); }
+                Transform::Icdf => { bench_ghllplus(&mut group, t_name, *card, &data, NaiveGumbel::default()); }
                 Transform::Pade => { bench_ghllplus(&mut group, t_name, *card, &data, PadeGumbel::default()); }
-                Transform::SimpleBithack => { bench_ghllplus(&mut group, t_name, *card, &data, SimpleBitHackGumbel::default()); }
-                Transform::TaylorBithack => { bench_ghllplus(&mut group, t_name, *card, &data, TaylorBitHackGumbel::default()); }
+                Transform::BasicBithack => { bench_ghllplus(&mut group, t_name, *card, &data, BasicBitHackGumbel::default()); }
+                Transform::CorrectedBithack => { bench_ghllplus(&mut group, t_name, *card, &data, CorrectedBitHackGumbel::default()); }
                 Transform::Spline => { bench_ghllplus(&mut group, t_name, *card, &data, SplineGumbel::default()); }
                 Transform::LUT => { bench_ghllplus(&mut group, t_name, *card, &data, LUTGumbel::default()); }
             }
@@ -48,6 +48,7 @@ fn benchmark(c: &mut Criterion) {
     }
     group.finish();
 }
+
 
 criterion_group!(benches, benchmark);
 criterion_main!(benches);

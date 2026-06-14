@@ -19,14 +19,14 @@ base.algs <- c(
 			   "HLL" = "HyperLogLog"
 )
 gumbel.algs <- c(
-				"GHLLGeo" = "GumbelHyperLogLog (Geo)",
-				"GHLLHar" = "GumbelHyperLogLog (Har)",
+				"GHLLGeo" = "GumbelHyperLogLog (średnia geometryczna)",
+				"GHLLHar" = "GumbelHyperLogLog (średnia harmoniczna)",
 #				"GHLLRealGeo" = "GumbelHyperLogLog (Real, Geo)",
 #				"GHLLRealHar" = "GumbelHyperLogLog (Real, Har)",
-				"GHLLPlus" = "GumbelHyperLogLog+"
+				"GHLLPlus" = "GumbelHyperLogLog"
 )
 
-transforms <- c("ICDF", "SimpleBitHack", "TaylorBitHack", "LUT", "Pade", "Spline")
+transforms <- c("Naive", "BasicBitHack", "CorrectedBitHack", "LUT", "Pade", "Spline")
 
 # Plot generation
 
@@ -102,6 +102,9 @@ if (combined) {
 		# Mark the cardinality with a line
 
 		abline(h = 1, lwd = 2)
+
+		# Add a frame (box) around the plot
+		box(lwd = 2)
 
 		# Add a legend
 
@@ -184,6 +187,9 @@ if (combined) {
 			# Mark the cardinality with a line
 
 			abline(h = 1, lwd = 2)
+			
+			# Add a frame (box) around the plot
+			box(lwd = 2)
 
 			# Add a legend
 

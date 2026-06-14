@@ -26,5 +26,5 @@ name = "estimator_overhead"
 harness = false
 
 [[bench]]
-name = "microbench"
+name = "ghll_throughput"
 harness = false
