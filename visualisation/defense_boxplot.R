@@ -11,7 +11,7 @@ transforms <- c("Naive", "CorrectedBitHack", "BasicBitHack", "LUT", "Spline", "P
 # Helper to read results
 read_res <- function(alg, prec) {
   # Use sprintf to ensure no scientific notation or extra spaces
-  filename <- paste0("../results/", alg, "_", prec, "_", sprintf("%d", card), "_", sprintf("%d", size), ".txt")
+  filename <- paste0("results/", alg, "_", prec, "_", sprintf("%d", card), "_", sprintf("%d", size), ".txt")
   if (file.exists(filename)) {
     vals <- scan(filename, what = double(), nmax = iters, quiet = TRUE)
     return(vals / card)
@@ -65,7 +65,7 @@ for (prec in precisions) {
   }
 
   # Create Plot
-  png(paste0("defense_accuracy_boxplot_", prec, ".png"), width = 1600, height = 900, res = 150)
+  png(paste0("visualisation/defense_accuracy_boxplot_", prec, ".png"), width = 1600, height = 900, res = 150)
   par(mar = c(6, 6, 4, 2))
 
   boxplot(plot_data,

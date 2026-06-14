@@ -5,7 +5,7 @@ use gumbel_estimation::{NaiveGumbel, PadeGumbel, BasicBitHackGumbel, CorrectedBi
 use std::io;
 use rayon::prelude::*;
 
-use comparison::{run_hll, run_ghll, run_ghllreal, run_ghllplus, run_ghllfloat, get_transform_name, load_data, save_to_file, Algorithm, Transform};
+use comparison::{run_hll, run_ghll, run_ghllplus, run_ghllplusfloat, get_transform_name, load_data, save_to_file, Algorithm, Transform};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Gumbel HLL Thesis Comparison Tool")]
@@ -27,8 +27,8 @@ struct Args {
     #[arg(short, long, default_value_t = 100)]
     iterations: usize,
 
-    /// Algorithms to test (e.g. hll, ghll, ghllreal, ghllplus, ghllfloat; defaults to all of them)
-    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllReal, Algorithm::GhllPlus, Algorithm::GhllFloat])]
+    /// Algorithms to test (e.g. hll, ghll, ghllplus, ghllplusfloat; defaults to all of them)
+    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllPlus, Algorithm::GhllPlusFloat])]
     algorithms: Vec<Algorithm>,
 
     /// Gumbel Transforms to test (e.g. icdf, pade, basic-bithack, corrected-bithack, spline, lut; defaults to all of them)
@@ -40,9 +40,8 @@ struct Args {
 struct IterationResults {
     hll: Option<f64>,
     ghll: Vec<(Transform, (f64, f64))>,
-    ghll_real: Vec<(Transform, (f64, f64))>,
     ghll_plus: Vec<(Transform, f64)>,
-    ghll_float: Vec<(Transform, f64)>,
+    ghll_plus_float: Vec<(Transform, f64)>,
 }
 
 fn main() -> io::Result<()> {
@@ -71,9 +70,8 @@ fn main() -> io::Result<()> {
                 let mut res = IterationResults {
                     hll: None,
                     ghll: Vec::new(),
-                    ghll_real: Vec::new(),
                     ghll_plus: Vec::new(),
-                    ghll_float: Vec::new(),
+                    ghll_plus_float: Vec::new(),
                 };
 
                 if args.algorithms.contains(&Algorithm::Hll) {
@@ -87,14 +85,11 @@ fn main() -> io::Result<()> {
                             if args.algorithms.contains(&Algorithm::Ghll) {
                                 res.ghll.push((t_enum, run_ghll(prec, &data, &builder, t)));
                             }
-                            if args.algorithms.contains(&Algorithm::GhllReal) {
-                                res.ghll_real.push((t_enum, run_ghllreal(prec, &data, &builder, t)));
-                            }
                             if args.algorithms.contains(&Algorithm::GhllPlus) {
                                 res.ghll_plus.push((t_enum, run_ghllplus(prec, &data, &builder, t)));
                             }
-                            if args.algorithms.contains(&Algorithm::GhllFloat) {
-                                res.ghll_float.push((t_enum, run_ghllfloat(prec, &data, &builder, t)));
+                            if args.algorithms.contains(&Algorithm::GhllPlusFloat) {
+                                res.ghll_plus_float.push((t_enum, run_ghllplusfloat(prec, &data, &builder, t)));
                             }
                         };
                     }
@@ -126,19 +121,13 @@ fn main() -> io::Result<()> {
                     save_to_file(&format!("GHLLGeo_{}", t_name), prec, card, size, geo)?;
                     save_to_file(&format!("GHLLHar_{}", t_name), prec, card, size, har)?;
                 }
-                if args.algorithms.contains(&Algorithm::GhllReal) {
-                    let geo: Vec<_> = all_results.iter().map(|r| r.ghll_real.iter().find(|(te, _)| *te == t_enum).unwrap().1.0).collect();
-                    let har: Vec<_> = all_results.iter().map(|r| r.ghll_real.iter().find(|(te, _)| *te == t_enum).unwrap().1.1).collect();
-                    save_to_file(&format!("GHLLRealGeo_{}", t_name), prec, card, size, geo)?;
-                    save_to_file(&format!("GHLLRealHar_{}", t_name), prec, card, size, har)?;
-                }
                 if args.algorithms.contains(&Algorithm::GhllPlus) {
                     let vals: Vec<_> = all_results.iter().map(|r| r.ghll_plus.iter().find(|(te, _)| *te == t_enum).unwrap().1).collect();
                     save_to_file(&format!("GHLLPlus_{}", t_name), prec, card, size, vals)?;
                 }
-                if args.algorithms.contains(&Algorithm::GhllFloat) {
-                    let vals: Vec<_> = all_results.iter().map(|r| r.ghll_float.iter().find(|(te, _)| *te == t_enum).unwrap().1).collect();
-                    save_to_file(&format!("GHLLFloatGeo_{}", t_name), prec, card, size, vals)?;
+                if args.algorithms.contains(&Algorithm::GhllPlusFloat) {
+                    let vals: Vec<_> = all_results.iter().map(|r| r.ghll_plus_float.iter().find(|(te, _)| *te == t_enum).unwrap().1).collect();
+                    save_to_file(&format!("GHLLPlusFloat_{}", t_name), prec, card, size, vals)?;
                 }
             }
             main_pb.inc(1);

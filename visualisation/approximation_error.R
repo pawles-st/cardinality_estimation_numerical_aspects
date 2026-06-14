@@ -4,11 +4,11 @@ library(tidyr)
 library(dplyr)
 
 # Load data
-if (!file.exists("all_errors.csv")) {
-  stop("File all_errors.csv not found. Run the Rust example gen_all_errors first.")
+if (!file.exists("visualisation/all_errors.csv")) {
+  stop("File all_errors.csv not found. Run 'cargo run --release --bin gen_all_errors' in gumbel_estimation directory first.")
 }
 
-df <- read.csv("all_errors.csv")
+df <- read.csv("visualisation/all_errors.csv")
 
 # Filter for plotting (avoiding extreme ends for clarity)
 df_plot <- df %>% filter(q > 0.001 & q < 0.999)
@@ -44,7 +44,7 @@ for (m in methods) {
          x = "Kwantyl (q)",
          y = "Błąd bezwzględny")
   
-  filename <- paste0("error_", m$name, "_standalone.png")
+  filename <- paste0("visualisation/error_", m$name, "_standalone.png")
   ggsave(filename, p, width = 10, height = 7, dpi = 300)
   cat(paste("Generated:", filename, "\n"))
 }
@@ -72,6 +72,6 @@ p_log <- ggplot(df_long, aes(x = q, y = Error, color = Method)) +
        x = "Kwantyl (q)",
        y = "Błąd bezwzględny")
 
-ggsave("all_methods_error_log.png", p_log, width = 12, height = 8, dpi = 300)
+ggsave("visualisation/all_methods_error_log.png", p_log, width = 12, height = 8, dpi = 300)
 
 cat("All individual and comparison error plots updated with centered titles and improved visibility.\n")

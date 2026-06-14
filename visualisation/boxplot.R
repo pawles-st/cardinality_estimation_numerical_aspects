@@ -1,4 +1,4 @@
-source("common.R")
+source("visualisation/common.R")
 
 # datasets config
 
@@ -64,7 +64,7 @@ if (combined) {
 
 		# Create a comparison boxplot
 
-		png(paste0("boxplot_all_transforms_", prec, ".png"), width = 1920, height = 1080)
+		png(paste0("visualisation/boxplot_all_transforms_", prec, ".png"), width = 1920, height = 1080)
 		
 		par(mar = c(15, 8, 4, 2))
 
@@ -148,7 +148,7 @@ if (combined) {
 
 			# Create a comparison boxplot
 
-			png(paste0("boxplot_", trans, "_", prec, ".png"), width = 1920, height = 1080)
+			png(paste0("visualisation/boxplot_", trans, "_", prec, ".png"), width = 1920, height = 1080)
 			
 			par(mar = c(12, 6, 4, 2))
 

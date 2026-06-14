@@ -1,4 +1,4 @@
-source("common.R")
+source("visualisation/common.R")
 
 # datasets config
 cardinalities <- seq(from = 10000, to = 600000, by = 10000)
@@ -46,7 +46,7 @@ for (prec in precisions) {
         for (card in cardinalities) {
             # Check if file exists before reading
             data.text <- paste(alg, prec, format(card, scientific = FALSE), format(card * mult, scientific = FALSE), sep = '_')
-            filename <- paste0("../results/", data.text, ".txt")
+            filename <- paste0("results/", data.text, ".txt")
             
             if (file.exists(filename)) {
                 alg.estimates <- read.data(alg, prec, card, mult)
@@ -58,7 +58,7 @@ for (prec in precisions) {
         if (length(estimates) == 0) next
 
         # Create the plot
-        png(paste0("scatter_n_trend_", alg, "_", prec, ".png"), width = 1200, height = 900, res = 120)
+        png(paste0("visualisation/scatter_n_trend_", alg, "_", prec, ".png"), width = 1200, height = 900, res = 120)
         par(mar = c(6, 7, 5, 2)) # Increased left and bottom margins
 
         # Flatten estimates for plotting

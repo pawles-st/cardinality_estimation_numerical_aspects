@@ -1,6 +1,6 @@
 pub mod constants;
 use ahash::random_state::RandomState;
-use gumbel_estimation::{GHLL, GHLLPlus, GHLLReal, GumbelTransform};
+use gumbel_estimation::{GHLL, GHLLPlus, GHLLPlusFloat, GumbelTransform};
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
 use rayon::prelude::*;
 use std::fs::File;
@@ -11,9 +11,8 @@ use std::io::{BufRead, BufReader, BufWriter, Write};
 pub enum Algorithm {
     Hll,
     Ghll,
-    GhllReal,
     GhllPlus,
-    GhllFloat,
+    GhllPlusFloat,
 }
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, Copy, Eq, Hash)]
@@ -80,22 +79,16 @@ pub fn run_ghll<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &Ran
     (estimator.count_geo(), estimator.count_har())
 }
 
-pub fn run_ghllreal<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> (f64, f64) {
-    let mut estimator = GHLLReal::with_precision(prec, builder.clone(), transform).unwrap();
-    for &value in data { estimator.add(&value) }
-    (estimator.count_geo(), estimator.count_har())
-}
-
 pub fn run_ghllplus<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> f64 {
     let mut estimator = GHLLPlus::with_precision(prec, builder.clone(), transform).unwrap();
     for &value in data { estimator.add(&value) }
     estimator.count()
 }
 
-pub fn run_ghllfloat<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> f64 {
-    let mut estimator = gumbel_estimation::GHLLFloat::with_precision(prec, builder.clone(), transform).unwrap();
+pub fn run_ghllplusfloat<G: GumbelTransform + Copy>(prec: u8, data: &[u64], builder: &RandomState, transform: G) -> f64 {
+    let mut estimator = GHLLPlusFloat::with_precision(prec, builder.clone(), transform).unwrap();
     for &value in data { estimator.add(&value) }
-    estimator.count_geo()
+    estimator.count()
 }
 
 // Run experiments for HLL
@@ -123,20 +116,6 @@ pub fn gather_ghll<G: GumbelTransform + Copy + Send + Sync>(
     }).unzip()
 }
 
-// Run experiments for GHLLReal (Geo + Har)
-pub fn gather_ghllreal<G: GumbelTransform + Copy + Send + Sync>(
-    prec: u8,
-    data: &[u64],
-    builders: &[RandomState],
-    transform: G,
-) -> (Vec<f64>, Vec<f64>) {
-    builders.into_par_iter().map(|builder| {
-        let mut estimator = GHLLReal::with_precision(prec, builder.clone(), transform).unwrap();
-        for &value in data { estimator.add(&value) }
-        (estimator.count_geo(), estimator.count_har())
-    }).unzip()
-}
-
 // Run experiments for GHLLPlus
 pub fn gather_ghllplus<G: GumbelTransform + Copy + Send + Sync>(
     prec: u8,
@@ -151,16 +130,16 @@ pub fn gather_ghllplus<G: GumbelTransform + Copy + Send + Sync>(
     }).collect()
 }
 
-// Run experiments for GHLLFloat (Geo only)
-pub fn gather_ghllfloat<G: GumbelTransform + Copy + Send + Sync>(
+// Run experiments for GHLLPlusFloat (Production comparison)
+pub fn gather_ghllplusfloat<G: GumbelTransform + Copy + Send + Sync>(
     prec: u8,
     data: &[u64],
     builders: &[RandomState],
     transform: G,
 ) -> Vec<f64> {
     builders.into_par_iter().map(|builder| {
-        let mut estimator = gumbel_estimation::GHLLFloat::with_precision(prec, builder.clone(), transform).unwrap();
+        let mut estimator = GHLLPlusFloat::with_precision(prec, builder.clone(), transform).unwrap();
         for &value in data { estimator.add(&value) }
-        estimator.count_geo()
+        estimator.count()
     }).collect()
 }

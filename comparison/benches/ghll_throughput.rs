@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use gumbel_estimation::{GHLL, GHLLFloat, NaiveGumbel, CorrectedBitHackGumbel, BasicBitHackGumbel, LUTGumbel, SplineGumbel, PadeGumbel};
+use gumbel_estimation::{GHLLPlus, GHLLPlusFloat, NaiveGumbel, CorrectedBitHackGumbel, BasicBitHackGumbel, LUTGumbel, SplineGumbel, PadeGumbel};
 use ahash::RandomState;
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
 
@@ -19,11 +19,11 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
     group_hll.finish();
 
-    // 2. GHLL (Q16.16 Optimized)
+    // 2. GHLLPlus (Production Q16.16)
     let mut group_q = c.benchmark_group("GHLL");
     
     group_q.bench_function("Naive", |b| {
-        let mut ghll = GHLL::with_precision(precision, builder.clone(), NaiveGumbel::new()).unwrap();
+        let mut ghll = GHLLPlus::with_precision(precision, builder.clone(), NaiveGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -32,7 +32,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_q.bench_function("Pade", |b| {
-        let mut ghll = GHLL::with_precision(precision, builder.clone(), PadeGumbel::new()).unwrap();
+        let mut ghll = GHLLPlus::with_precision(precision, builder.clone(), PadeGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -41,7 +41,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_q.bench_function("CorrectedBitHack", |b| {
-        let mut ghll = GHLL::with_precision(precision, builder.clone(), CorrectedBitHackGumbel::new()).unwrap();
+        let mut ghll = GHLLPlus::with_precision(precision, builder.clone(), CorrectedBitHackGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -50,7 +50,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_q.bench_function("BasicBitHack", |b| {
-        let mut ghll = GHLL::with_precision(precision, builder.clone(), BasicBitHackGumbel::new()).unwrap();
+        let mut ghll = GHLLPlus::with_precision(precision, builder.clone(), BasicBitHackGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -59,7 +59,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_q.bench_function("LUT", |b| {
-        let mut ghll = GHLL::with_precision(precision, builder.clone(), LUTGumbel::new()).unwrap();
+        let mut ghll = GHLLPlus::with_precision(precision, builder.clone(), LUTGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -68,7 +68,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_q.bench_function("Spline", |b| {
-        let mut ghll = GHLL::with_precision(precision, builder.clone(), SplineGumbel::new()).unwrap();
+        let mut ghll = GHLLPlus::with_precision(precision, builder.clone(), SplineGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -78,11 +78,11 @@ fn bench_micro_throughput(c: &mut Criterion) {
 
     group_q.finish();
 
-    // 3. GHLLFloat (f32 Baseline)
+    // 3. GHLLPlusFloat (Production f32 Baseline)
     let mut group_f = c.benchmark_group("GHLLFloat");
     
     group_f.bench_function("Naive", |b| {
-        let mut ghll = GHLLFloat::with_precision(precision, builder.clone(), NaiveGumbel::new()).unwrap();
+        let mut ghll = GHLLPlusFloat::with_precision(precision, builder.clone(), NaiveGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -91,7 +91,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_f.bench_function("Pade", |b| {
-        let mut ghll = GHLLFloat::with_precision(precision, builder.clone(), PadeGumbel::new()).unwrap();
+        let mut ghll = GHLLPlusFloat::with_precision(precision, builder.clone(), PadeGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -100,7 +100,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_f.bench_function("CorrectedBitHack", |b| {
-        let mut ghll = GHLLFloat::with_precision(precision, builder.clone(), CorrectedBitHackGumbel::new()).unwrap();
+        let mut ghll = GHLLPlusFloat::with_precision(precision, builder.clone(), CorrectedBitHackGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -109,7 +109,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_f.bench_function("BasicBitHack", |b| {
-        let mut ghll = GHLLFloat::with_precision(precision, builder.clone(), BasicBitHackGumbel::new()).unwrap();
+        let mut ghll = GHLLPlusFloat::with_precision(precision, builder.clone(), BasicBitHackGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -118,7 +118,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_f.bench_function("LUT", |b| {
-        let mut ghll = GHLLFloat::with_precision(precision, builder.clone(), LUTGumbel::new()).unwrap();
+        let mut ghll = GHLLPlusFloat::with_precision(precision, builder.clone(), LUTGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));
@@ -127,7 +127,7 @@ fn bench_micro_throughput(c: &mut Criterion) {
     });
 
     group_f.bench_function("Spline", |b| {
-        let mut ghll = GHLLFloat::with_precision(precision, builder.clone(), SplineGumbel::new()).unwrap();
+        let mut ghll = GHLLPlusFloat::with_precision(precision, builder.clone(), SplineGumbel::new()).unwrap();
         let mut i = 0u64;
         b.iter(|| {
             ghll.add(black_box(&i));

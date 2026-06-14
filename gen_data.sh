@@ -5,7 +5,7 @@ cardinalities=()
 # large datasets
 
 size_multiplies=(100)
-for i in {1..50}; do
+for i in {1..60}; do
 	cardinalities+=($((i * 10000)))
 done
 
