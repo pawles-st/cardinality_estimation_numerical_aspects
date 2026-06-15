@@ -31,8 +31,8 @@ struct Args {
     #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Algorithm::Hll, Algorithm::Ghll, Algorithm::GhllPlus, Algorithm::GhllPlusFloat])]
     algorithms: Vec<Algorithm>,
 
-    /// Gumbel Transforms to test (e.g. icdf, pade, basic-bithack, corrected-bithack, spline, lut; defaults to all of them)
-    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Icdf, Transform::Pade, Transform::BasicBithack, Transform::CorrectedBithack, Transform::Spline, Transform::LUT])]
+    /// Gumbel Transforms to test (e.g. naive, pade, basic-bithack, corrected-bithack, spline, lut; defaults to all of them)
+    #[arg(short, long, value_enum, value_delimiter = ',', default_values_t = vec![Transform::Naive, Transform::Pade, Transform::BasicBithack, Transform::CorrectedBithack, Transform::Spline, Transform::LUT])]
     transforms: Vec<Transform>,
 
 }
@@ -95,7 +95,7 @@ fn main() -> io::Result<()> {
                     }
 
                     match t_enum {
-                        Transform::Icdf => { run_for_transform!(NaiveGumbel::default()); }
+                        Transform::Naive => { run_for_transform!(NaiveGumbel::default()); }
                         Transform::Pade => { run_for_transform!(PadeGumbel::default()); }
                         Transform::BasicBithack => { run_for_transform!(BasicBitHackGumbel::default()); }
                         Transform::CorrectedBithack => { run_for_transform!(CorrectedBitHackGumbel::default()); }

@@ -372,7 +372,7 @@ impl LUTGumbel {
 impl GumbelTransform for LUTGumbel {
     #[inline]
     fn quantile(&self, q: f32) -> f32 {
-        -f32::ln(-f32::ln(q))
+        self.from_bits((q * 4294967296.0) as u32)
     }
 
     #[inline(always)]
@@ -404,11 +404,11 @@ mod tests {
 
     #[test]
     fn test_spline_accuracy() {
-        let icdf = NaiveGumbel::new();
+        let naive = NaiveGumbel::new();
         let spline = SplineGumbel::new();
         for i in 1..1000 {
             let q = i as f32 / 1000.0;
-            let expected = icdf.quantile(q);
+            let expected = naive.quantile(q);
             let actual = spline.quantile(q);
             let diff = (expected - actual).abs();
             // Linear spline with 4 segments per octave should be accurate to within ~1e-2
@@ -438,13 +438,13 @@ mod tests {
 
     #[test]
     fn test_lut_bias() {
-        let icdf = NaiveGumbel::new();
+        let naive = NaiveGumbel::new();
         let lut = LUTGumbel::new();
         let mut sum_diff = 0.0;
         let n = 100000;
         for i in 0..n {
             let bits = (i as u64 * 0xFFFFFFFF / n as u64) as u32;
-            let expected = icdf.quantile((bits as f32 + 0.5) / 4294967296.0);
+            let expected = naive.quantile((bits as f32 + 0.5) / 4294967296.0);
             let actual = lut.from_bits(bits);
             sum_diff += actual - expected;
         }

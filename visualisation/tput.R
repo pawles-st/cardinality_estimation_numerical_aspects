@@ -1,4 +1,4 @@
-# visualisation/defense_tput.R
+# visualisation/tput.R
 library(jsonlite)
 
 # Function to extract median time from Criterion's JSON output
@@ -43,7 +43,7 @@ for (i in seq_along(transforms_internal)) {
 }
 
 # --- Plot 1: Hardware Win (Native vs Generic) ---
-png("visualisation/defense_native_vs_generic.png", width = 1500, height = 900, res = 150)
+png("plots/defense_native_vs_generic.png", width = 1500, height = 900, res = 150)
 par(mar = c(8, 6, 5, 2))
 
 t_matrix_arch <- cbind(c(hll_generic, hll_native), rbind(generic_q16, native_q16))
@@ -65,7 +65,7 @@ legend("topright", legend = c("Ogólna x86_64", "Natywna CPU"), fill = colors_ar
 dev.off()
 
 # --- Plot 2: Math Win (f32 vs Q16.16) ---
-png("visualisation/defense_f32_vs_q16_native.png", width = 1500, height = 900, res = 150)
+png("plots/defense_f32_vs_q16_native.png", width = 1500, height = 900, res = 150)
 par(mar = c(8, 6, 5, 2))
 
 t_matrix_math <- rbind(c(hll_native, native_f32), c(0, native_q16))
@@ -92,4 +92,4 @@ legend("topright",
        fill = c("#555555", "#aec6cf", "#ffb347"), bty = "n", cex = 1.1)
 dev.off()
 
-cat("Generated Final Verified Plots:\n1. defense_native_vs_generic.png\n2. defense_f32_vs_q16_native.png\n")
+cat("Generated Final Verified Plots in plots/:\n1. defense_native_vs_generic.png\n2. defense_f32_vs_q16_native.png\n")

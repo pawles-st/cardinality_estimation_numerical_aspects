@@ -31,7 +31,7 @@ fn main() {
     let iterations = 10;
     let builder = RandomState::with_seeds(0, 0, 0, 0);
     
-    run_experiment("Standard ICDF (f32::ln)", p, n, iterations, builder.clone(), NaiveGumbel::new());
+    run_experiment("Naive (f32::ln)", p, n, iterations, builder.clone(), NaiveGumbel::new());
     println!();
     run_experiment("Padé Approximant (Rational + LN_TABLE)", p, n, iterations, builder.clone(), PadeGumbel::new());
     println!();

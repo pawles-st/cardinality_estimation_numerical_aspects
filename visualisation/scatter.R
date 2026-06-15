@@ -9,7 +9,6 @@ iters <- 100
 # algorithms specification
 ghll.variant <- "GHLLPlus"
 base.algs <- c("HLL" = "HyperLogLog")
-gumbel.algs <- c("GHLLPlus" = "GumbelHyperLogLog")
 transforms <- c("Naive", "BasicBitHack", "CorrectedBitHack", "LUT", "Pade", "Spline")
 
 # All algorithms to plot separately
@@ -58,7 +57,7 @@ for (prec in precisions) {
         if (length(estimates) == 0) next
 
         # Create the plot
-        png(paste0("visualisation/scatter_n_trend_", alg, "_", prec, ".png"), width = 1200, height = 900, res = 120)
+        png(paste0("plots/scatter_n_trend_", alg, "_", prec, ".png"), width = 1200, height = 900, res = 120)
         par(mar = c(6, 7, 5, 2)) # Increased left and bottom margins
 
         # Flatten estimates for plotting
@@ -101,6 +100,6 @@ for (prec in precisions) {
         box(lwd = 2)
 
         dev.off()
-        cat(paste0("Generated n-trend scatterplot: scatter_n_trend_", alg, "_", prec, ".png\n"))
+        cat(paste0("Generated n-trend scatterplot: plots/scatter_n_trend_", alg, "_", prec, ".png\n"))
     }
 }

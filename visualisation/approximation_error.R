@@ -44,34 +44,9 @@ for (m in methods) {
          x = "Kwantyl (q)",
          y = "Błąd bezwzględny")
   
-  filename <- paste0("visualisation/error_", m$name, "_standalone.png")
+  filename <- paste0("plots/error_", m$name, "_standalone.png")
   ggsave(filename, p, width = 10, height = 7, dpi = 300)
   cat(paste("Generated:", filename, "\n"))
 }
 
-# Also regenerate the combined log plot with centered title
-df_long <- df_plot %>%
-  pivot_longer(cols = -q, names_to = "Method", values_to = "Error")
-
-colors_vec <- c(
-  "Naive" = "#27ae60",
-  "Pade" = "#2ecc71",
-  "BasicBitHack" = "#9b59b6",
-  "CorrectedBitHack" = "#8e44ad",
-  "Spline" = "#f39c12",
-  "LUT" = "#e67e22"
-)
-
-p_log <- ggplot(df_long, aes(x = q, y = Error, color = Method)) +
-  geom_line(alpha = 0.7, linewidth = 0.8) +
-  scale_y_log10() +
-  scale_color_manual(values = colors_vec) +
-  vis_theme +
-  labs(title = "Błąd bezwzględny wszystkich metod",
-       subtitle = "Skala logarytmiczna (log10)",
-       x = "Kwantyl (q)",
-       y = "Błąd bezwzględny")
-
-ggsave("visualisation/all_methods_error_log.png", p_log, width = 12, height = 8, dpi = 300)
-
-cat("All individual and comparison error plots updated with centered titles and improved visibility.\n")
+cat("All individual error plots updated with centered titles and improved visibility.\n")

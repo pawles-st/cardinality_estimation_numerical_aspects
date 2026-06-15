@@ -1,4 +1,3 @@
-pub mod constants;
 use ahash::random_state::RandomState;
 use gumbel_estimation::{GHLL, GHLLPlus, GHLLPlusFloat, GumbelTransform};
 use hyperloglogplus::{HyperLogLog, HyperLogLogPF};
@@ -17,7 +16,7 @@ pub enum Algorithm {
 
 #[derive(clap::ValueEnum, Clone, Debug, PartialEq, Copy, Eq, Hash)]
 pub enum Transform {
-    Icdf,
+    Naive,
     Pade,
     BasicBithack,
     CorrectedBithack,
@@ -27,7 +26,7 @@ pub enum Transform {
 
 pub fn get_transform_name(t: Transform) -> &'static str {
     match t {
-        Transform::Icdf => "Naive",
+        Transform::Naive => "Naive",
         Transform::Pade => "Pade",
         Transform::BasicBithack => "BasicBitHack",
         Transform::CorrectedBithack => "CorrectedBitHack",

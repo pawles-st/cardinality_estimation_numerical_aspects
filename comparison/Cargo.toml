@@ -18,13 +18,5 @@ rand = "0.8.5"
 rayon = "1.8"
 
 [[bench]]
-name = "transform_comparison"
-harness = false
-
-[[bench]]
-name = "estimator_overhead"
-harness = false
-
-[[bench]]
 name = "ghll_throughput"
 harness = false
